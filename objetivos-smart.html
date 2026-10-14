@@ -1,0 +1,1716 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Objetivos SMART — da intenção à ação</title><style>
+  /* ============ chrome: progress dots, page counter, arrows, overview/notes toggles ============ */
+  #nav{position:fixed;left:0;right:0;bottom:3vh;display:flex;justify-content:center;gap:8px;z-index:20;pointer-events:none}
+  #nav button{width:6px;height:6px;border-radius:50%;border:none;background:currentColor;opacity:.28;cursor:pointer;padding:0;color:var(--ink);pointer-events:auto;transition:opacity .2s,width .2s}
+  #nav button.active{opacity:1;width:18px;border-radius:3px}
+  body.on-dark #nav button{color:var(--paper)}
+  #page-counter{position:fixed;left:6vw;bottom:3vh;font-family:var(--font-mono,ui-monospace,Menlo,monospace);font-size:11px;letter-spacing:.1em;opacity:.5;z-index:20;color:var(--ink)}
+  body.on-dark #page-counter{color:var(--paper)}
+  #controls{position:fixed;right:6vw;bottom:3vh;z-index:20;display:flex;gap:12px;align-items:center;font-family:var(--font-mono,ui-monospace,Menlo,monospace);font-size:11px;letter-spacing:.08em;text-transform:uppercase;opacity:.55;color:var(--ink)}
+  body.on-dark #controls{color:var(--paper)}
+  #controls button{all:unset;cursor:pointer}
+  .arrow-btn{position:fixed;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:1px solid currentColor;opacity:.3;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent;color:var(--ink);z-index:20;transition:opacity .2s}
+  .arrow-btn svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}
+  body.on-dark .arrow-btn{color:var(--paper)}
+  .arrow-btn:hover{opacity:.85}
+  #prev-btn{left:3vw}
+  #next-btn{right:3vw}
+  #overview{position:fixed;inset:0;background:rgba(10,10,10,.94);z-index:50;display:none;padding:6vh 6vw;overflow-y:auto}
+  #overview.open{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:22px;align-content:start}
+  .ov-card{aspect-ratio:16/9;background:var(--paper);border-radius:4px;overflow:hidden;position:relative;cursor:pointer;border:2px solid transparent}
+  .ov-card.current{border-color:var(--accent)}
+  .ov-clone{width:1600px;height:900px;transform-origin:top left;pointer-events:none;position:absolute;top:0;left:0}
+  .ov-label{position:absolute;left:8px;bottom:6px;font-family:ui-monospace,Menlo,monospace;font-size:10px;letter-spacing:.06em;color:#111;background:rgba(255,255,255,.8);padding:2px 6px;border-radius:2px;z-index:2}
+  #notes-panel{position:fixed;top:0;right:0;bottom:0;width:340px;max-width:86vw;background:#111214;color:#f4f4f2;z-index:40;transform:translateX(100%);transition:transform .3s ease;padding:5vh 24px;overflow-y:auto;font-family:var(--font-body,Arial,sans-serif)}
+  #notes-panel.open{transform:translateX(0)}
+  #notes-panel h3{font-size:15px;font-weight:600;margin-bottom:2px}
+  #notes-panel .notes-section{font-size:10px;text-transform:uppercase;letter-spacing:.14em;opacity:.5;margin-top:22px;margin-bottom:10px}
+  #notes-panel ul{padding-left:1.1em;display:flex;flex-direction:column;gap:9px;font-size:13.5px;line-height:1.55}
+  #notes-panel .notes-empty{opacity:.5;font-size:13px;margin-top:22px}
+
+:root{--ink:#071019;--paper:#D9E2D2;--accent:#F2B45B;--mist:#8CB5B0;--font-display:Georgia,serif;--font-body:Arial,sans-serif;--font-mono:ui-monospace,monospace}*{box-sizing:border-box;margin:0;padding:0}html,body{width:100%;height:100%;overflow:hidden;background:var(--ink)}body{font-family:var(--font-body);color:var(--paper)}#deck{position:fixed;inset:0;display:flex;height:100vh;width:max-content;transition:transform .6s cubic-bezier(.65,0,.35,1);will-change:transform}.slide{width:100vw;height:100vh;flex:0 0 100vw;position:relative;overflow:hidden;background:var(--ink)}.scene-art,.scene-svg,.upper-world,.lower-world{position:absolute;inset:0;width:100%;height:100%}.upper-world{bottom:50%;height:50%}.lower-world{top:50%;height:50%}.caption{position:absolute;z-index:3;max-width:68vw;text-shadow:0 2px 22px rgba(0,0,0,.55)}.caption h1,.caption h2{font-family:var(--font-display);font-weight:400;letter-spacing:-.035em;text-wrap:balance}.caption h1{font-size:clamp(54px,7.6vw,122px);line-height:.92}.caption h2{font-size:clamp(42px,5.7vw,92px);line-height:.96}.eyebrow{display:block;font:700 10px/1 var(--font-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}.caption-bottom{left:6vw;bottom:9vh}.caption-left{left:6vw;top:17vh;max-width:42vw}.caption-right{right:6vw;top:20vh;text-align:right;max-width:40vw}.caption-center{left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;max-width:74vw}.caption-small{left:8vw;bottom:12vh;max-width:34vw}.caption-top{left:6vw;top:8vh}.detail .scene-art{transform:scale(1.04)}.pause .scene-art{filter:saturate(.7)}.constellation .scene-svg{opacity:.95}.finale .scene-art{filter:brightness(1.08)}
+  /* ============ stage and live page list ============
+     #deck-stage holds the deck so the studio can scale it; slides marked
+     [hidden] (inactive layout variants, deleted slides) leave the page list, and
+     [data-skip] slides leave it too unless the studio is showing them. */
+  #deck-stage{position:fixed;inset:0;overflow:hidden}
+  #deck > .slide[hidden]{display:none!important}
+  body:not(.deck-show-skipped) #deck > .slide[data-skip]{display:none!important}
+  #deck-transition-layer{position:absolute;inset:0;z-index:30;pointer-events:none;overflow:hidden}
+  #deck-transition-layer[hidden]{display:none}
+  #deck-transition-layer i{position:absolute;top:0;bottom:0;background:var(--wipe,#111);transform-origin:50% 0}
+  /* ============ end stage and live page list ============ */
+
+.ui{position:fixed;z-index:20}.arrow-btn{top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;display:grid;place-items:center}.prev{left:2vw}.next{right:2vw}.arrow-btn,.control-bar button{border:1px solid rgba(217,226,210,.42);background:rgba(7,16,25,.48);color:var(--paper);cursor:pointer}.arrow-btn svg,.control-bar svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.7}.control-bar{right:5vw;bottom:2vh;display:flex;gap:8px}.control-bar button{height:36px;padding:0 12px;font:10px var(--font-mono);letter-spacing:.08em;text-transform:uppercase}#nav{left:50%;bottom:3vh;transform:translateX(-50%);display:flex;gap:8px}#nav button{width:7px;height:7px;border:0;border-radius:50%;background:var(--paper);opacity:.3}#nav button.active{width:20px;border-radius:4px;opacity:1}#page-counter{left:6vw;bottom:3vh;font:10px var(--font-mono);letter-spacing:.12em;opacity:.6}#overview{position:fixed;inset:0;background:rgba(4,9,14,.96);z-index:50;display:none;padding:6vh 6vw;overflow:auto}#overview.open{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-content:start}.ov-card{aspect-ratio:16/9;position:relative;overflow:hidden;border:2px solid transparent;background:var(--ink);cursor:pointer}.ov-card.current{border-color:var(--accent)}.ov-clone{width:1600px;height:900px;transform-origin:top left;pointer-events:none}.ov-label{position:absolute;left:8px;bottom:7px;background:var(--ink);padding:3px 6px;font:9px var(--font-mono)}#notes-panel{position:fixed;top:0;right:0;bottom:0;width:340px;max-width:86vw;background:#0a141c;z-index:40;transform:translateX(100%);transition:transform .3s;padding:6vh 26px;overflow:auto}#notes-panel.open{transform:translateX(0)}#notes-panel h3{font:400 23px/1.1 var(--font-display)}#notes-panel ul{padding-left:18px;display:grid;gap:10px;margin-top:20px;font-size:13px;line-height:1.5}@media(max-width:760px){#overview.open{grid-template-columns:1fr 1fr}.caption-left,.caption-right{left:8vw;right:auto;top:auto;bottom:13vh;text-align:left;max-width:72vw}.arrow-btn{display:none}.control-bar span{display:none}}@media print{body{overflow:visible}#deck{position:static;transform:none!important;width:auto;display:block}.slide{width:1920px;height:1080px;page-break-after:always}.ui,#overview,#notes-panel{display:none!important}}
+
+  @media print{
+    @page{size:1920px 1080px;margin:0}
+    html,body{overflow:visible;height:auto}
+    #deck{position:static;transform:none!important;width:auto;display:block;height:auto}
+    .slide{width:1920px;height:1080px;margin:0;page-break-after:always;break-after:page}
+    #nav,#controls,#page-counter,.arrow-btn,#overview,#notes-panel,#deck-transition-layer{display:none!important}
+    #deck-stage{position:static!important;overflow:visible!important;transform:none!important}
+    #deck > .slide[data-skip]{display:none!important}
+  }
+/* ============ deck studio: slide properties (see #deck-studio-config) ============ */
+.slide.in-no-eyebrow .caption .eyebrow{display:none!important}
+/* ============ end slide properties ============ */
+</style><style id="deck-studio-style">
+  /* ============ deck studio: the editing workspace (runtime only) ============
+     Press E (or E · Edit) to open it. Kept in its own <style> so theme
+     presets never recolour the editor itself. */
+  :root{--st-top:52px;--st-rail-w:220px;--st-panel-w:316px;--st-bg:#fbfbfc;--st-fg:#18191c;--st-mute:#6b6e76;--st-line:#e3e4e8;--st-soft:#f1f2f5;--st-hover:#e9eaee;--st-accent:#2b5fff;--st-on-accent:#fff;--st-stage:#e6e7eb}
+  body.st-dark{--st-bg:#1c1d20;--st-fg:#ececf0;--st-mute:#9a9ca4;--st-line:#2f3136;--st-soft:#25272b;--st-hover:#2d2f34;--st-stage:#121315}
+  #studio-topbar,#studio-rail,#studio-panel{display:none}
+  .st-ui{font:13px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;color:var(--st-fg);letter-spacing:0;text-transform:none}
+  .st-ui *{box-sizing:border-box}
+  .st-ui [hidden]{display:none!important}
+  .st-ui button{font:inherit;color:inherit}
+  body.studio{background:var(--st-stage)!important}
+  body.studio #studio-topbar,body.studio #studio-rail,body.studio #studio-panel{display:flex}
+  body.studio.st-collapsed #studio-rail,body.studio.st-collapsed #studio-panel{display:none}
+  body.studio #nav,body.studio #controls,body.studio #page-counter,body.studio .arrow-btn{display:none!important}
+  body.studio #deck-stage{inset:auto;width:100vw;height:100vh;transform-origin:0 0;border-radius:4px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px rgba(0,0,0,.06)}
+  body.studio #deck [data-edit-live]:hover{outline:1px dashed rgba(43,95,255,.75);outline-offset:3px}
+  body.studio #deck [contenteditable="true"]{cursor:text}
+  body.studio #deck [contenteditable="true"]:focus{outline:none}
+  body.studio #deck img[data-edit-live]{cursor:pointer}
+  body.studio #deck [data-st-selected]{outline:2px solid #2b5fff!important;outline-offset:3px}
+  body.studio #deck > .slide[data-skip]::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.0) 0 18px,rgba(255,255,255,.18) 18px 36px);pointer-events:none;z-index:90}
+
+  #studio-topbar{position:fixed;left:0;right:0;top:0;height:var(--st-top);z-index:80;align-items:center;justify-content:space-between;gap:16px;padding:0 14px 0 16px;background:var(--st-bg);border-bottom:1px solid var(--st-line)}
+  .st-brand{display:flex;align-items:center;gap:10px;min-width:0}
+  .st-dot{width:10px;height:10px;border-radius:50%;background:var(--st-accent);box-shadow:0 0 0 4px rgba(43,95,255,.15);flex:none}
+  .st-name{font-weight:650;white-space:nowrap}
+  .st-count{color:var(--st-mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .st-actions{display:flex;align-items:center;gap:6px;min-width:0}
+  .st-status{color:var(--st-mute);font-size:12px;margin-right:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:28vw}
+  .st-btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 11px;border-radius:8px;border:1px solid var(--st-line);background:var(--st-bg);cursor:pointer;white-space:nowrap}
+  .st-btn:hover{background:var(--st-hover)}
+  .st-btn:disabled{opacity:.4;cursor:default}
+  .st-btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  .st-icon{width:32px;padding:0;justify-content:center}
+  .st-primary{background:var(--st-accent);border-color:var(--st-accent);color:var(--st-on-accent)}
+  .st-primary:hover{background:#1f4fe6}
+  .st-sep{width:1px;height:22px;background:var(--st-line);margin:0 4px}
+  .st-menu{position:relative}
+  .st-menu-list{position:absolute;right:0;top:38px;min-width:200px;width:max-content;padding:6px;border-radius:10px;background:var(--st-bg);border:1px solid var(--st-line);box-shadow:0 12px 30px rgba(0,0,0,.16);display:none;z-index:85}
+  .st-menu.open .st-menu-list{display:block}
+  .st-menu-list button{display:flex;width:100%;justify-content:space-between;align-items:center;gap:12px;padding:8px 10px;border:0;border-radius:7px;background:none;cursor:pointer;text-align:left}
+  .st-menu-list button:hover{background:var(--st-hover)}
+  .st-menu-note{margin:2px 4px 6px;padding:6px 8px;border-radius:7px;background:var(--st-hover);font-size:11px;line-height:1.4;color:var(--st-mute);white-space:nowrap}
+  .st-menu.st-off .st-menu-list button{opacity:.45;cursor:not-allowed}
+  .st-menu-list kbd{font-family:inherit;font-size:11px;line-height:1;color:var(--st-mute);white-space:nowrap}
+
+  #studio-rail{position:fixed;left:0;top:var(--st-top);bottom:0;width:var(--st-rail-w);z-index:70;flex-direction:column;background:var(--st-bg);border-right:1px solid var(--st-line)}
+  .st-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px 8px;font-weight:650}
+  .st-head span+span{color:var(--st-mute);font-weight:500}
+  #st-rail-list{flex:1;overflow-y:auto;padding:4px 10px 16px}
+  .st-slide{position:relative;display:grid;grid-template-columns:20px 1fr;gap:6px;align-items:start;padding:6px 4px;border-radius:8px;cursor:pointer}
+  .st-slide:hover{background:var(--st-soft)}
+  .st-slide .st-num{font-size:11px;color:var(--st-mute);text-align:right;padding-top:2px;font-variant-numeric:tabular-nums}
+  .st-thumb{position:relative;aspect-ratio:16/9;border-radius:5px;overflow:hidden;background:#ddd;box-shadow:0 0 0 1px var(--st-line)}
+  .st-slide.current .st-thumb{box-shadow:0 0 0 2px var(--st-accent)}
+  .st-slide.skipped .st-thumb{opacity:.38}
+  .st-slide.skipped .st-num{text-decoration:line-through}
+  .st-thumb-clone{position:absolute!important;left:0;top:0;transform-origin:0 0;pointer-events:none}
+  .st-tools{position:absolute;right:8px;top:10px;display:none;gap:4px}
+  .st-slide:hover .st-tools{display:flex}
+  .st-tools button{width:24px;height:24px;border-radius:6px;border:0;background:rgba(17,18,20,.72);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .st-tools button:hover{background:#111214}
+  .st-tools svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+  .st-slide.drop-before::before,.st-slide.drop-after::after{content:"";position:absolute;left:24px;right:4px;height:3px;border-radius:2px;background:var(--st-accent)}
+  .st-slide.drop-before::before{top:-2px}
+  .st-slide.drop-after::after{bottom:-2px}
+  .st-slide.dragging{opacity:.4}
+
+  #studio-panel{position:fixed;right:0;top:var(--st-top);bottom:0;width:var(--st-panel-w);z-index:70;flex-direction:column;background:var(--st-bg);border-left:1px solid var(--st-line);overflow-y:auto}
+  #st-panel-body{padding:4px 16px 24px}
+  .st-sec{padding:14px 0;border-bottom:1px solid var(--st-line)}
+  .st-sec:last-child{border-bottom:0}
+  .st-sec-h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-weight:650;margin-bottom:10px}
+  .st-sec-h small{font-weight:500;color:var(--st-mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .st-field{display:grid;gap:6px;margin:10px 0}
+  .st-field>span,.st-label{font-size:12px;color:var(--st-mute)}
+  .st-row{grid-template-columns:1fr auto;align-items:center}
+  .st-ui select,.st-ui input[type="text"],.st-ui textarea{width:100%;font:inherit;color:var(--st-fg);background:var(--st-soft);border:1px solid var(--st-line);border-radius:8px;padding:7px 9px}
+  .st-ui textarea{resize:vertical;min-height:96px;line-height:1.45}
+  .st-seg{display:flex;flex-wrap:wrap;gap:4px;padding:3px;border-radius:9px;background:var(--st-soft)}
+  .st-seg button{flex:1 1 auto;min-width:0;height:28px;padding:0 8px;border:0;border-radius:7px;background:none;cursor:pointer;white-space:nowrap}
+  .st-seg button[aria-pressed="true"]{background:var(--st-bg);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
+  .st-seg svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px}
+  .st-swatches{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+  .st-swatches button{width:24px;height:24px;border-radius:50%;border:1px solid rgba(0,0,0,.14);cursor:pointer;padding:0;position:relative}
+  .st-swatches button[aria-pressed="true"]{box-shadow:0 0 0 2px var(--st-bg),0 0 0 4px var(--st-accent)}
+  .st-swatches .st-none{background:linear-gradient(135deg,#fff 45%,#e5484d 45% 55%,#fff 55%)}
+  .st-swatches input[type="color"]{width:28px;height:28px;padding:0;border:0;background:none;cursor:pointer}
+  .st-toggle{position:relative;width:38px;height:22px;border-radius:11px;border:0;background:#c9cbd1;cursor:pointer;padding:0}
+  .st-toggle::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:transform .15s}
+  .st-toggle[aria-pressed="true"]{background:var(--st-accent)}
+  .st-toggle[aria-pressed="true"]::after{transform:translateX(16px)}
+  .st-variants{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+  .st-variants button{display:grid;gap:4px;padding:4px;border:1px solid var(--st-line);border-radius:8px;background:var(--st-bg);cursor:pointer;text-align:left}
+  .st-variants button[aria-pressed="true"]{border-color:var(--st-accent);box-shadow:0 0 0 1px var(--st-accent)}
+  .st-variants .st-thumb{width:100%}
+  .st-variants span{font-size:11px;color:var(--st-mute);padding:0 2px}
+  .st-step{display:grid;grid-template-columns:32px 1fr 32px;gap:6px;align-items:center}
+  .st-step button{height:30px;border-radius:7px;border:1px solid var(--st-line);background:var(--st-bg);cursor:pointer}
+  .st-step output{text-align:center;font-variant-numeric:tabular-nums}
+  .st-ui input[type="range"]{width:100%;accent-color:var(--st-accent)}
+  .st-grid9{display:grid;grid-template-columns:repeat(3,28px);gap:4px}
+  .st-grid9 button{width:28px;height:28px;border-radius:6px;border:1px solid var(--st-line);background:var(--st-soft);cursor:pointer;position:relative}
+  .st-grid9 button::after{content:"";position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--st-mute)}
+  .st-grid9 button[aria-pressed="true"]{border-color:var(--st-accent);background:rgba(43,95,255,.12)}
+  .st-grid9 button[aria-pressed="true"]::after{background:var(--st-accent)}
+  .st-actions-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .st-actions-row .st-btn{height:30px}
+  .st-danger{color:#d93036}
+  .st-hint{color:var(--st-mute);font-size:12.5px;line-height:1.5}
+  .st-resize{position:absolute;top:0;bottom:0;width:6px;cursor:col-resize;z-index:2}
+  #studio-rail .st-resize{right:-3px}
+  #studio-panel .st-resize{left:-3px}
+  body.st-resizing,body.st-resizing *{cursor:col-resize!important;user-select:none!important}
+  #deck-export-dialog{max-width:540px;border:none;border-radius:14px;padding:22px 24px;font:14px/1.55 -apple-system,"Segoe UI",Arial,sans-serif;color:#16171a;background:#fff}
+  #deck-export-dialog::backdrop{background:rgba(10,10,10,.55)}
+  #deck-export-dialog h3{font-size:17px;margin-bottom:6px}
+  #deck-export-dialog ol{padding-left:1.2em;display:grid;gap:8px;margin:12px 0 16px}
+  #deck-export-dialog code{font:12px ui-monospace,Menlo,Consolas,monospace;background:#f1f1ef;padding:1px 5px;border-radius:4px}
+  #deck-export-dialog button{font:inherit;padding:6px 14px;border-radius:8px;border:1px solid #ccc;background:#fafafa;cursor:pointer}
+  @media print{#studio-topbar,#studio-rail,#studio-panel,#deck-export-dialog{display:none!important}}
+</style>
+<style>.summary{font-size:clamp(17px,1.65vw,28px);line-height:1.45;margin-top:26px;max-width:650px;color:var(--paper);opacity:.86}.caption-bottom{max-width:75vw}.caption-left,.caption-right{max-width:43vw}.sources{display:grid;gap:16px;margin-top:28px;font-size:clamp(14px,1.25vw,20px)}.sources a{color:var(--accent);text-underline-offset:5px}.sources small{font-size:12px;opacity:.6}@media(max-width:760px){.caption h2{font-size:clamp(34px,7vw,54px)}.caption{max-width:76vw}.summary{font-size:17px}.scene-svg{opacity:.35}} </style><style>@media(max-width:760px){#controls{top:18px;bottom:auto;left:6vw;right:6vw;justify-content:space-between;font-size:9px;opacity:.85}#page-counter{bottom:6vh}#nav{bottom:3vh}.caption-bottom{bottom:13vh}}</style><style>#controls,#page-counter{color:var(--paper)!important}#controls{opacity:.9}#notes-panel.open{padding-top:85px}#notes-panel.open::before{content:"N · Fechar notas";position:absolute;top:22px;left:26px;font-size:12px;color:var(--accent)}</style><style id="smart-activity-style">
+.smart-activity{background:var(--paper);color:var(--ink);padding:4vh 8vw 9vh;overflow-y:auto}.smart-sheet{max-width:1300px;margin:auto;font-family:Arial,sans-serif}.smart-header{display:flex;gap:24px;align-items:center;justify-content:space-between;margin-bottom:16px}.smart-header .eyebrow{color:#72501d;margin-bottom:8px}.smart-header h2{font-family:Georgia,serif;font-size:clamp(26px,2.8vw,44px);font-weight:400;line-height:1.1;margin:0 0 7px}.smart-header p{font-size:14px;line-height:1.4}.smart-print{display:flex;align-items:center;gap:9px;flex-shrink:0;padding:12px 16px;border:0;border-radius:6px;background:var(--ink);color:var(--paper);font-size:13px;cursor:pointer}.smart-print svg{width:20px;height:20px}.smart-identity{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-bottom:12px}.smart-identity label,.smart-goal{display:block;font-size:12px;font-weight:700}.smart-sheet input,.smart-sheet textarea{display:block;width:100%;font:14px/1.4 Arial,sans-serif;background:#fffdf7;color:#071019;border:1px solid #9ba69b;border-radius:4px;padding:8px 10px;margin-top:5px;resize:vertical}.smart-sheet input:focus,.smart-sheet textarea:focus{outline:2px solid #72501d;outline-offset:1px}.smart-goal{margin-bottom:12px}.smart-rows{border-top:1px solid #9ba69b}.smart-row{display:grid;grid-template-columns:36px minmax(170px,30%) 1fr;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #9ba69b}.smart-letter{font-family:Georgia,serif;font-size:36px}.smart-prompt{display:grid;gap:4px;font-size:12px;line-height:1.35}.smart-prompt b{font-size:15px}.smart-row textarea{margin:0;min-height:58px}.smart-footer{display:flex;justify-content:space-between;gap:18px;font-size:11px;line-height:1.5;margin-top:12px}#smart-print-sheet{display:none}
+@media(max-width:760px){.smart-activity{padding:72px 7vw 90px}.smart-header{display:block}.smart-print{margin-top:14px}.smart-identity{grid-template-columns:1fr 1fr}.smart-identity label:first-child{grid-column:1/-1}.smart-row{grid-template-columns:30px 1fr}.smart-row textarea{grid-column:1/-1;min-height:85px}.smart-footer{display:block}.smart-save{display:block;margin-top:6px}}
+@media print{body.smart-printing>*{display:none!important}body.smart-printing,html:has(body.smart-printing){height:auto!important;overflow:visible!important;background:white!important}body.smart-printing #smart-print-sheet{display:block!important;position:static!important;width:auto!important;color:#111;background:white;font:10pt/1.35 Arial,sans-serif}#smart-print-sheet h1{font:24pt Georgia,serif;margin:0 0 4mm}#smart-print-sheet .print-intro{margin-bottom:5mm}#smart-print-sheet .print-id{display:flex;gap:8mm;margin-bottom:5mm;flex-wrap:wrap}#smart-print-sheet .print-answer{white-space:pre-wrap;overflow-wrap:anywhere;min-height:19mm;border-bottom:1px solid #999;padding:2mm 0 3mm}#smart-print-sheet .print-block{break-inside:avoid;margin-bottom:4mm}#smart-print-sheet .print-block h2{font-size:12pt;margin:0 0 1mm}#smart-print-sheet .print-question{font-size:9pt;color:#333}#smart-print-sheet .print-goal{min-height:14mm}#smart-print-sheet .print-foot{font-size:8pt;margin-top:4mm}body.smart-printing .print-answer:empty{background:repeating-linear-gradient(to bottom,transparent 0,transparent 6mm,#ddd 6mm,#ddd 6.2mm)} }
+</style>
+<style>body:has(#nav button:nth-child(9).active) #controls,body:has(#nav button:nth-child(9).active) #page-counter,body:has(#nav button:nth-child(9).active) #nav{background:#071019;color:#D9E2D2!important;border-radius:6px;padding:8px}body:has(#nav button:nth-child(9).active) #nav{right:auto;width:max-content}body:has(#nav button:nth-child(9).active) .arrow-btn{background:#071019;color:#D9E2D2}</style><style id="smart-extension">
+.brief{font:clamp(16px,1.4vw,23px)/1.5 var(--font-body);max-width:650px;margin-top:16px;color:var(--paper);opacity:.88}.caption h2{font-size:clamp(36px,5.3vw,86px)}.caption-bottom{bottom:11vh}.caption-left,.caption-right{top:14vh}.arrow-btn{color:var(--paper);opacity:.7}#nav{width:max-content;right:auto}#nav button{min-height:12px}button:focus-visible,a:focus-visible{outline:3px solid var(--accent);outline-offset:4px}.smart-quiz{overflow-y:auto;padding:7vh 10vw 12vh;background:var(--ink);color:var(--paper)}.quiz-wrap{max-width:1050px;margin:auto}.smart-quiz h2{font:400 clamp(32px,4.5vw,64px)/1.1 Georgia,serif}.quiz-intro{font-size:clamp(16px,1.5vw,22px);margin:14px 0 20px;line-height:1.45}#quiz-progress{font:12px var(--font-mono);color:var(--accent)}#quiz-case{font:clamp(19px,2.1vw,30px)/1.4 Georgia,serif;margin:16px 0 22px;max-width:950px}#quiz-options{display:flex;flex-wrap:wrap;gap:10px}#quiz-options button,.quiz-actions button{font:16px/1.3 Arial,sans-serif;border:1px solid var(--mist);padding:12px 16px;background:transparent;border-radius:5px;color:var(--paper);cursor:pointer}#quiz-options button:hover:not(:disabled){background:#203b40}#quiz-options button:disabled{cursor:default;opacity:.6}#quiz-options button[data-right]{border:2px solid var(--accent);opacity:1}#quiz-options button[data-wrong]{border:2px dashed #eda9a0;opacity:1}#quiz-feedback{font-size:18px;line-height:1.5;margin:18px 0;min-height:54px}.quiz-actions{display:flex;gap:12px;flex-wrap:wrap}#quiz-next{background:var(--accent);color:var(--ink);border-color:var(--accent)}.quiz-tip{font-size:13px;opacity:.7;margin-top:14px;line-height:1.4}[hidden]{display:none!important}body:not(.studio) .slide[inert]{pointer-events:none}
+@media(max-width:760px){.caption-left,.caption-right{top:auto;bottom:14vh}.caption .summary{font-size:17px;margin-top:18px}.brief{font-size:15px;line-height:1.45;margin-top:12px}.caption h2{font-size:clamp(32px,7vw,54px)}.smart-quiz{padding:78px 7vw 110px}.quiz-intro{margin:12px 0}#quiz-case{font-size:21px}#quiz-feedback{font-size:16px}.arrow-btn{display:grid;width:32px;height:32px;top:auto;bottom:18px;transform:none}#prev-btn{left:5vw}#next-btn{right:5vw}#page-counter{bottom:65px}#nav{bottom:28px;gap:5px}#nav button{width:5px}#nav button.active{width:14px}#controls{background:#071019;padding:9px;border-radius:5px}.smart-activity{padding-bottom:120px}}
+@media(max-height:550px){.slide.scene{overflow:auto}.caption{position:relative;left:auto;right:auto;top:auto;bottom:auto;margin:65px 10vw 100px;max-width:75vw;text-align:left}.caption h2{font-size:36px}.brief,.summary{font-size:16px}.smart-quiz{padding-top:65px}}
+@media(prefers-reduced-motion:reduce){#deck{transition:none!important}}
+</style></head><body>
+<div id="deck-stage">
+<div id="deck">
+<section class="slide scene" data-slide-id="inicio"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de Definição de objetivos"><rect width="1600" height="900" fill="var(--ink)"/><circle cx="1160" cy="270" r="130" fill="var(--accent)" opacity=".8"/><path d="M0 740 360 340 620 610 1030 270 1600 740V900H0" fill="#122c37"/><path d="M720 900 950 580 1030 270" fill="none" stroke="var(--accent)" stroke-width="4"/></svg><div class="caption caption-bottom"><span class="eyebrow" data-edit-id="label">Definição de objetivos</span><h2 data-edit-id="title">Transforme intenção<br>em direção.</h2><p class="summary" data-edit-id="summary">Metas SMART: clareza para agir, evidência para acompanhar.</p><p class="brief" data-edit-id="explanation">SMART reúne cinco critérios: específica, mensurável, atingível, relevante e com prazo. Eles ajudam a transformar um desejo em um resultado verificável.</p></div></section>
+<section class="slide scene" data-slide-id="especifica"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de S · Específica"><rect width="1600" height="900" fill="var(--ink)"/><circle cx="1120" cy="445" r="70" fill="none" stroke="var(--paper)" opacity=".18" stroke-width="2"/><circle cx="1120" cy="445" r="160" fill="none" stroke="var(--paper)" opacity=".18" stroke-width="2"/><circle cx="1120" cy="445" r="250" fill="none" stroke="var(--paper)" opacity=".18" stroke-width="2"/><circle cx="1120" cy="445" r="340" fill="none" stroke="var(--paper)" opacity=".18" stroke-width="2"/><circle cx="1120" cy="445" r="14" fill="var(--accent)"/><path d="M820 750 1120 445" stroke="var(--accent)" stroke-width="4"/></svg><div class="caption caption-left"><span class="eyebrow" data-edit-id="label">S · Específica</span><h2 data-edit-id="title">Escolha um<br>destino claro.</h2><p class="summary" data-edit-id="summary">Qual resultado? Para quem? Quem assume a responsabilidade?</p><p class="brief" data-edit-id="explanation">Delimite o resultado, o contexto e o responsável. “Melhorar o atendimento” é amplo; “reduzir a espera no suporte por e-mail” indica onde agir.</p></div></section>
+<section class="slide scene" data-slide-id="mensuravel"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de M · Mensurável"><rect width="1600" height="900" fill="var(--ink)"/><rect x="180" y="590" width="65" height="110" rx="4" fill="var(--accent)" opacity="0.2"/><rect x="290" y="530" width="65" height="170" rx="4" fill="var(--accent)" opacity="0.32"/><rect x="400" y="460" width="65" height="240" rx="4" fill="var(--accent)" opacity="0.44"/><rect x="510" y="380" width="65" height="320" rx="4" fill="var(--accent)" opacity="0.56"/><rect x="620" y="270" width="65" height="430" rx="4" fill="var(--accent)" opacity="0.6799999999999999"/><path d="M150 730H780" stroke="var(--paper)" opacity=".4"/></svg><div class="caption caption-right"><span class="eyebrow" data-edit-id="label">M · Mensurável</span><h2 data-edit-id="title">Dê um número<br>ao progresso.</h2><p class="summary" data-edit-id="summary">Exemplo: reduzir a média de 24 para 12 horas.</p><p class="brief" data-edit-id="explanation">Defina um indicador, o valor inicial e o alvo. Use a mesma forma de medir em todas as revisões para comparar o progresso.</p></div></section>
+<section class="slide scene" data-slide-id="atingivel"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de A · Atingível"><rect width="1600" height="900" fill="var(--ink)"/><path d="M780 750h130v-110h130V530h130V420h130V310h130" fill="none" stroke="var(--paper)" stroke-width="18" opacity=".6"/><circle cx="1430" cy="240" r="34" fill="var(--accent)"/></svg><div class="caption caption-left"><span class="eyebrow" data-edit-id="label">A · Atingível</span><h2 data-edit-id="title">Construa um<br>caminho possível.</h2><p class="summary" data-edit-id="summary">Recursos, capacidade e restrições sustentam a meta.</p><p class="brief" data-edit-id="explanation">Compare o desafio com o tempo, a equipe e os recursos disponíveis. Se não houver capacidade, ajuste o plano, o escopo ou o prazo.</p></div></section>
+<section class="slide scene" data-slide-id="relevante"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de R · Relevante"><rect width="1600" height="900" fill="var(--ink)"/><circle cx="470" cy="430" r="270" stroke="var(--paper)" stroke-width="2" fill="none" opacity=".2"/><path d="M470 170 560 500 470 440 380 500Z" fill="var(--accent)"/><path d="M470 700 410 450 470 490 530 450Z" fill="var(--paper)" opacity=".3"/></svg><div class="caption caption-right"><span class="eyebrow" data-edit-id="label">R · Relevante</span><h2 data-edit-id="title">Ligue a meta<br>ao que importa.</h2><p class="summary" data-edit-id="summary">Responder mais rápido apoia uma experiência melhor para o cliente.</p><p class="brief" data-edit-id="explanation">Explique qual necessidade a meta atende. Ganhar velocidade só faz sentido se a resposta continuar útil para o cliente.</p></div></section>
+<section class="slide scene" data-slide-id="temporal"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de T · Prazo determinado"><rect width="1600" height="900" fill="var(--ink)"/><circle cx="1130" cy="440" r="250" fill="none" stroke="var(--paper)" stroke-width="3" opacity=".3"/><path d="M1130 250V440l160 90" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round"/><circle cx="1130" cy="440" r="14" fill="var(--accent)"/></svg><div class="caption caption-left"><span class="eyebrow" data-edit-id="label">T · Prazo determinado</span><h2 data-edit-id="title">Coloque uma data<br>no horizonte.</h2><p class="summary" data-edit-id="summary">Até 31 de março de 2027, com revisão semanal.</p><p class="brief" data-edit-id="explanation">Combine a data final com revisões intermediárias. Assim, você percebe atrasos e corrige o percurso antes do vencimento.</p></div></section>
+<section class="slide scene" data-slide-id="exemplo"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de Exemplo didático · suporte por e-mail"><rect width="1600" height="900" fill="var(--ink)"/><path d="M0 480Q420 530 730 370T1600 280" fill="none" stroke="var(--paper)" stroke-width="2" opacity=".3"/><circle cx="220" cy="483" r="7" fill="var(--accent)"/><circle cx="520" cy="443" r="9" fill="var(--accent)"/><circle cx="800" cy="345" r="12" fill="var(--accent)"/><circle cx="1090" cy="289" r="16" fill="var(--accent)"/><circle cx="1400" cy="280" r="24" fill="var(--accent)"/></svg><div class="caption caption-bottom"><span class="eyebrow" data-edit-id="label">Exemplo didático · suporte por e-mail</span><h2 data-edit-id="title">A intenção ganha<br>forma concreta.</h2><p class="summary" data-edit-id="summary">Reduzir o tempo médio de primeira resposta de 24 para 12 horas até 31/03/2027.</p><p class="brief" data-edit-id="explanation">Neste caso fictício, a equipe de suporte mede a média no sistema de chamados. Um piloto sustenta o alvo; revisões semanais acompanham prazo e qualidade.</p></div></section>
+<section class="slide scene" data-slide-id="acao"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de Agora é com você"><rect width="1600" height="900" fill="var(--ink)"/><rect x="970" y="200" width="360" height="480" rx="10" fill="var(--paper)" opacity=".08"/><path d="M1020 300h260" stroke="var(--paper)" opacity=".25" stroke-width="3"/><path d="M1020 370h260" stroke="var(--paper)" opacity=".25" stroke-width="3"/><path d="M1020 440h260" stroke="var(--paper)" opacity=".25" stroke-width="3"/><path d="M1020 510h260" stroke="var(--paper)" opacity=".25" stroke-width="3"/><path d="m1050 590 35 35 125-145" fill="none" stroke="var(--accent)" stroke-width="8"/></svg><div class="caption caption-left"><span class="eyebrow" data-edit-id="label">Agora é com você</span><h2 data-edit-id="title">Escreva sua<br>próxima meta.</h2><p class="summary" data-edit-id="summary">Vou [resultado], de [base] para [alvo], até [data], porque [prioridade].</p><p class="brief" data-edit-id="explanation">Acrescente quem fará, quais recursos usará e onde medirá o resultado. Depois, preencha a ficha e experimente o desafio no slide seguinte.</p></div></section>
+<section class="slide smart-activity" data-slide-id="atividade" data-edit="off"><div class="smart-sheet"><header class="smart-header"><div><span class="eyebrow">Atividade individual ou em grupo</span><h2>Minha meta SMART, na prática</h2><p>Escolha uma meta real e explique o que cada letra representa nela.</p></div><button type="button" class="smart-print"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 9V3h12v6M6 18H4V9h16v9h-2M6 14h12v7H6z"/></svg>Imprimir atividade</button></header><div class="smart-identity"><label>Nome / grupo<input data-answer="nome" autocomplete="off" maxlength="100" placeholder="Seu nome ou nome do grupo"></label><label>Turma<input data-answer="turma" autocomplete="off" maxlength="60" placeholder="Sua turma"></label><label>Data<input data-answer="data" autocomplete="off" maxlength="30" placeholder="DD/MM/AAAA"></label></div><label class="smart-goal">Minha meta<textarea data-answer="meta" aria-label="Minha meta" maxlength="400" rows="2" placeholder="Descreva a meta que você quer construir."></textarea></label><div class="smart-rows"><label class="smart-row"><span class="smart-letter">S</span><span class="smart-prompt"><b>Específica</b><span>O que você quer alcançar? Em qual situação?</span></span><textarea data-answer="s" aria-label="S — Específica" placeholder="Na prática, para minha meta…" maxlength="700" rows="2"></textarea></label><label class="smart-row"><span class="smart-letter">M</span><span class="smart-prompt"><b>Mensurável</b><span>Como vai medir? Qual é o ponto de partida e o resultado esperado?</span></span><textarea data-answer="m" aria-label="M — Mensurável" placeholder="Na prática, para minha meta…" maxlength="700" rows="2"></textarea></label><label class="smart-row"><span class="smart-letter">A</span><span class="smart-prompt"><b>Atingível</b><span>Quais recursos, tempo e apoio tornam essa meta possível?</span></span><textarea data-answer="a" aria-label="A — Atingível" placeholder="Na prática, para minha meta…" maxlength="700" rows="2"></textarea></label><label class="smart-row"><span class="smart-letter">R</span><span class="smart-prompt"><b>Relevante</b><span>Por que essa meta importa para você ou para o grupo?</span></span><textarea data-answer="r" aria-label="R — Relevante" placeholder="Na prática, para minha meta…" maxlength="700" rows="2"></textarea></label><label class="smart-row"><span class="smart-letter">T</span><span class="smart-prompt"><b>Prazo determinado</b><span>Até quando? Em quais datas você vai acompanhar o progresso?</span></span><textarea data-answer="t" aria-label="T — Prazo determinado" placeholder="Na prática, para minha meta…" maxlength="700" rows="2"></textarea></label></div><footer class="smart-footer"><span>Você também pode imprimir em branco e responder à mão.</span><span class="smart-save" role="status">Respostas salvas apenas neste navegador.</span></footer></div></section>
+<section class="slide smart-quiz" data-slide-id="detetive" data-edit="off" data-own-scroll><div class="quiz-wrap"><span class="eyebrow">Atividade 2 · Detetive SMART</span><h2>Qual critério falta?</h2><p class="quiz-intro">Leia cada situação e escolha o ponto que precisa melhorar. Os casos são fictícios.</p><p id="quiz-progress"></p><blockquote id="quiz-case"></blockquote><div id="quiz-options" role="group" aria-label="Critério que falta"></div><p id="quiz-feedback" role="status" aria-live="polite"></p><div class="quiz-actions"><button id="quiz-next" type="button" hidden>Próximo caso →</button><button id="quiz-reset" type="button">Recomeçar desafio</button></div><p class="quiz-tip">Vale a primeira resposta de cada caso. Ao terminar, aplique a revisão à sua própria meta.</p></div></section>
+<section class="slide scene" data-slide-id="fontes"><svg class="scene-svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Ilustração conceitual de Continue explorando"><rect width="1600" height="900" fill="var(--ink)"/><path d="M1050 710V280l300-70v450Z" fill="var(--accent)" opacity=".24"/><path d="M1050 280 820 210v450l230 50 300-50" fill="none" stroke="var(--paper)" stroke-width="3" opacity=".5"/></svg><div class="caption caption-left"><span class="eyebrow" data-edit-id="label">Continue explorando</span><h2 data-edit-id="title">Da meta<br>à prática.</h2><p class="summary" data-edit-id="summary">Abra as referências e volte à sua meta para refiná-la.</p><div class="sources" data-edit="off"><a href="https://www.rdstation.com/blog/marketing/planejamento-estrategico/" target="_blank" rel="noopener">1 · Planejamento estratégico — RD Station</a><a href="https://www.youtube.com/watch?v=-kVO5NFkdlw&amp;t=41" target="_blank" rel="noopener">2 · Vídeo complementar — a partir de 0:41</a><small>Vídeo indicado pelo usuário; conteúdo não verificado.</small></div></div></section>
+</div>
+<div id="deck-transition-layer" hidden></div>
+</div>
+
+<button class="ui arrow-btn prev" id="prev-btn" aria-label="Slide anterior"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+<button class="ui arrow-btn next" id="next-btn" aria-label="Próximo slide"><svg viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg></button>
+<div id="nav" data-runtime="clear"></div>
+<div id="page-counter" data-runtime="clear"></div>
+<div id="controls">
+  <button id="notes-btn">N &middot; Notas</button>
+  <span>&middot;</span>
+  <button id="overview-btn">ESC &middot; Visão geral</button>
+  <span>&middot;</span>
+  <button id="edit-btn">E &middot; Editar</button>
+</div>
+
+<div id="overview" data-runtime="clear"></div>
+<div id="notes-panel" data-runtime="clear"></div>
+
+<!-- Deck studio UI. Hidden until E is pressed; Save HTML empties its generated parts. -->
+<header id="studio-topbar" class="st-ui" aria-label="Deck studio">
+  <div class="st-brand"><span class="st-dot" aria-hidden="true"></span><span class="st-name" data-st-text="Deck studio">Deck studio</span><span id="st-count" class="st-count" data-runtime="clear"></span></div>
+  <div class="st-actions">
+    <span id="st-status" class="st-status" role="status" aria-live="polite" data-runtime="clear"></span>
+    <button type="button" id="st-undo" class="st-btn st-icon" data-st-title="Undo" title="Undo"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg></button>
+    <button type="button" id="st-redo" class="st-btn st-icon" data-st-title="Redo" title="Redo"><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9a5 5 0 0 0 0 10h3"/></svg></button>
+    <span class="st-sep" aria-hidden="true"></span>
+    <button type="button" id="st-play" class="st-btn st-primary"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5Z" fill="currentColor"/></svg><span data-st-text="Play">Play</span></button>
+    <div class="st-menu" id="st-export-menu">
+      <button type="button" id="st-export" class="st-btn" aria-haspopup="true" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 11 5 5 5-5"/><path d="M5 21h14"/></svg><span data-st-text="Export">Export</span></button>
+      <div class="st-menu-list" role="menu">
+        <button type="button" role="menuitem" data-st-export="html"><span>HTML</span><kbd data-st-text="Single file">Single file</kbd></button>
+        <button type="button" role="menuitem" data-st-export="pdf"><span>PDF</span><kbd data-st-text="One slide per page">One slide per page</kbd></button>
+        <button type="button" role="menuitem" data-st-export="pptx"><span>PPTX</span><kbd data-st-text="Editable">Editable</kbd></button>
+      </div>
+    </div>
+    <button type="button" id="st-reset" class="st-btn" data-st-title="Discard every change" title="Discard every change"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4.5v4h-4"/></svg><span data-st-text="Reset">Reset</span></button>
+    <span class="st-sep" aria-hidden="true"></span>
+    <button type="button" id="st-lang" class="st-btn st-icon" hidden></button>
+    <button type="button" id="st-ui-theme" class="st-btn st-icon" data-st-title="Light or dark editor" title="Light or dark editor"><svg viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg></button>
+    <button type="button" id="st-collapse" class="st-btn st-icon" data-st-title="Hide side panels" title="Hide side panels"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg></button>
+    <button type="button" id="st-close" class="st-btn"><span data-st-text="Done">Done</span></button>
+  </div>
+</header>
+<aside id="studio-rail" class="st-ui" aria-label="Slides">
+  <div class="st-head"><span data-st-text="Slides">Slides</span><span id="st-rail-count" data-runtime="clear"></span></div>
+  <div id="st-rail-list" data-own-scroll data-runtime="clear"></div>
+  <div class="st-resize" data-st-resize="rail" aria-hidden="true"></div>
+</aside>
+<aside id="studio-panel" class="st-ui" aria-label="Properties" data-own-scroll>
+  <div class="st-resize" data-st-resize="panel" aria-hidden="true"></div>
+  <div id="st-panel-body" data-runtime="clear"></div>
+</aside>
+<input id="deck-image-input" type="file" accept="image/*" hidden>
+<dialog id="deck-export-dialog">
+  <h3>Export an editable PPTX</h3>
+  <p>PowerPoint export runs on your computer, next to this file.</p>
+  <ol>
+    <li>If you edited this deck, choose <b>Export &rarr; HTML</b> first so the export includes your changes.</li>
+    <li>Run <code>node scripts/export-pptx.mjs your-deck.html your-deck.pptx</code> from the skill folder, or ask your agent to export this deck to PPTX.</li>
+    <li>To edit with autosave and export straight from this menu, open the deck with <code>node scripts/serve-deck.mjs your-deck.html</code>.</li>
+  </ol>
+  <form method="dialog"><button type="submit">Close</button></form>
+</dialog>
+
+<!-- Studio state. Content edits (text, pictures) are pinned to the authored value
+     they replace; layout settings (theme, transition, layout choice, skipped
+     slides, slide properties, element styles) are kept as named settings.
+     Shipped decks keep {}. Export -> HTML bakes content edits into the slides. -->
+<script type="application/json" id="deck-studio-strings">{"lang": "pt-BR", "label": "Português", "strings": {"Deck studio": "Editor de slides", "Undo": "Desfazer", "Redo": "Refazer", "Play": "Apresentar", "Export": "Exportar", "Reset": "Restaurar", "Slide": "Slide", "Theme": "Tema", "Notes": "Notas", "Speaker notes": "Notas do apresentador", "Duplicate": "Duplicar", "Delete": "Excluir", "Skip": "Pular", "Background": "Fundo", "Transition": "Transição", "Night Archive": "Arquivo noturno", "Ember Field": "Campo de brasas", "Polar Cinema": "Cinema polar", "Colour": "Cor", "Text": "Texto", "Image": "Imagem", "Layout": "Layout", "Save HTML": "Salvar HTML", "None": "Nenhuma"}}</script>
+<script type="application/json" id="deck-edits">{"v":2,"text":{},"img":{},"style":{},"notes":{},"slides":{"order":[],"skip":{},"deleted":[],"dupes":[],"variant":{},"props":{"inicio":{"bg":"palette:1"}}},"deck":{}}</script>
+<script type="application/json" id="deck-studio-config">{
+  "palette": [
+    {"name": "Night ink", "value": "#071019"},
+    {"name": "Paper", "value": "#D9E2D2"},
+    {"name": "Lamp gold", "value": "#F2B45B"},
+    {"name": "Mist", "value": "#8CB5B0"},
+    {"name": "Dusk green", "value": "#385E4D"},
+    {"name": "White", "value": "#FFFFFF"}
+  ],
+  "themes": [
+    {"id": "night-archive", "label": "Night Archive", "map": {}},
+    {"id": "ember-field", "label": "Ember Field", "map": {"#D9E2D2": "#F0D8B4", "#F2B45B": "#EF6C47"}},
+    {"id": "polar-cinema", "label": "Polar Cinema", "map": {"#D9E2D2": "#DDEBEF", "#F2B45B": "#79D9E6"}}
+  ],
+  "props": {
+    "slide": [
+      {"key": "eyebrow", "label": "Eyebrow label", "type": "toggle", "class": "in-no-eyebrow", "invert": true}
+    ]
+  }
+}</script>
+
+<script>
+window.__SLIDE_NOTES__ = {
+  "inicio": {
+    "title": "Definição de objetivos",
+    "talk": [
+      "Uma intenção aponta um desejo; uma meta define um resultado verificável.",
+      "SMART ajuda a testar a qualidade da formulação.",
+      "Use as setas, os pontos inferiores ou a visão geral para navegar."
+    ]
+  },
+  "especifica": {
+    "title": "S · Específica",
+    "talk": [
+      "Evite formulações amplas como melhorar o atendimento.",
+      "Exemplo didático: reduzir o tempo de primeira resposta no suporte por e-mail.",
+      "Defina o canal e a equipe responsáveis para delimitar o escopo."
+    ]
+  },
+  "mensuravel": {
+    "title": "M · Mensurável",
+    "talk": [
+      "Registre o valor inicial antes de começar.",
+      "Use sempre a mesma definição: horas corridas ou úteis, por exemplo.",
+      "No exemplo, o indicador é a média mensal do tempo até a primeira resposta.",
+      "O sistema de chamados é a fonte de medição; acompanhe também a qualidade."
+    ]
+  },
+  "atingivel": {
+    "title": "A · Atingível",
+    "talk": [
+      "Atingível não significa fácil: exige desafio com base concreta.",
+      "Neste exemplo hipotético, suponha que um piloto já atingiu 12 horas.",
+      "Confirme se equipe, turnos e ferramentas permitem repetir esse resultado.",
+      "Se a capacidade não sustentar a meta, revise recursos, escopo ou prazo."
+    ]
+  },
+  "relevante": {
+    "title": "R · Relevante",
+    "talk": [
+      "Explique a relação com uma prioridade real da organização.",
+      "Rapidez só tem valor quando a resposta ajuda a resolver a demanda.",
+      "Acompanhe qualidade e satisfação para evitar respostas rápidas e inúteis."
+    ]
+  },
+  "temporal": {
+    "title": "T · Prazo determinado",
+    "talk": [
+      "A data é ilustrativa e deve ser adaptada ao seu contexto.",
+      "Defina um prazo final e momentos de acompanhamento.",
+      "Considere a média de março como verificação final do resultado."
+    ]
+  },
+  "exemplo": {
+    "title": "Exemplo didático · suporte por e-mail",
+    "talk": [
+      "Responsável: liderança do suporte; escopo: chamados recebidos por e-mail.",
+      "Indicador: média mensal em horas corridas, calculada no sistema de chamados.",
+      "Viabilidade hipotética: piloto e escala da equipe sustentam o alvo de 12 horas.",
+      "Relevância: melhorar a experiência, sem reduzir a qualidade da resposta.",
+      "Ritmo: acompanhamento semanal e verificação final da média de março."
+    ]
+  },
+  "acao": {
+    "title": "Agora é com você",
+    "talk": [
+      "Escolha uma meta real e preencha a frase com dados do seu contexto.",
+      "Complete a formulação com responsável, recursos e fonte de medição.",
+      "Teste as cinco dimensões; uma frase com número e data pode ainda ser inviável.",
+      "Pressione E para editar o texto do slide; exporte HTML para guardar uma cópia."
+    ]
+  },
+  "fontes": {
+    "title": "Continue explorando",
+    "talk": [
+      "RD Station: referência consultada para o contexto de planejamento, objetivos, ações e recursos.",
+      "YouTube: link fornecido pelo usuário, a partir de 41 segundos; conteúdo não verificado.",
+      "Exemplo, redação e ilustrações SVG foram criados para este material.",
+      "Visual: Night Archive. Não foram utilizadas fotografias de terceiros."
+    ]
+  },
+  "atividade": {
+    "title": "Minha meta SMART, na prática",
+    "talk": [
+      "Reserve de 10 a 15 minutos para os alunos escolherem uma meta e preencherem os cinco critérios.",
+      "Peça exemplos concretos: um indicador no M, recursos no A e uma data no T.",
+      "Em duplas, os alunos verificam se a meta do colega satisfaz os cinco critérios.",
+      "O botão Imprimir atividade imprime somente a ficha, com as respostas atuais ou em branco. Respostas longas podem ocupar mais de uma página."
+    ]
+  }
+};
+</script>
+<script>
+/* ================================================================
+   CLEAN-PPT ENGINE — generic horizontal-paginated single-file deck.
+   Independent implementation; not derived from any third-party deck
+   codebase. Fork this whole file per visual style.
+   The page list is live: every #deck > .slide that is not [hidden],
+   minus [data-skip] slides unless the studio asks to include them.
+   window.__deck is the API the studio, the exporter and QA use;
+   window.__deckGo stays as an instant jump for older tooling.
+   ================================================================ */
+(function(){
+  const deck = document.getElementById('deck');
+  const nav = document.getElementById('nav');
+  const counter = document.getElementById('page-counter');
+  const overview = document.getElementById('overview');
+  const notesPanel = document.getElementById('notes-panel');
+  const layer = document.getElementById('deck-transition-layer');
+  const root = document.documentElement;
+  const TRANSITIONS = ['slide', 'fade', 'zoom', 'rise', 'wipe', 'bars', 'iris', 'none'];
+  let slides = [];
+  let idx = 0;
+  let includeSkipped = false;
+  let transition = { name: root.dataset.deckTransition || 'slide', color: root.dataset.deckTransitionColor || '' };
+  const pad = n => String(n).padStart(2, '0');
+  const noteKey = s => (s.dataset.slideId || '').replace(/~\d+$/, '');
+
+  function list(){
+    return [...deck.children].filter(s => s.classList.contains('slide') && !s.hidden && (includeSkipped || !s.hasAttribute('data-skip')));
+  }
+
+  function place(i){ deck.style.transform = 'translateX(-' + (i * 100) + 'vw)'; }
+  function placeInstantly(i){
+    deck.style.transition = 'none';
+    place(i);
+    void deck.offsetWidth;
+    deck.style.transition = '';
+  }
+
+  const REVEAL = {
+    fade: el => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, easing: 'ease-out' }),
+    zoom: el => el.animate([{ opacity: 0, transform: 'scale(.94)' }, { opacity: 1, transform: 'none' }], { duration: 520, easing: 'cubic-bezier(.2,.7,.2,1)' }),
+    rise: el => el.animate([{ opacity: 0, transform: 'translateY(5vh)' }, { opacity: 1, transform: 'none' }], { duration: 520, easing: 'cubic-bezier(.2,.7,.2,1)' }),
+  };
+
+  // Cover transitions: a block of colour covers the stage, the slide swaps underneath, the block leaves.
+  function cover(name, swap){
+    if (!layer){ swap(); return; }
+    const color = transition.color || getComputedStyle(root).getPropertyValue('--accent').trim() || '#111';
+    layer.textContent = '';
+    layer.style.setProperty('--wipe', color);
+    layer.hidden = false;
+    const parts = name === 'bars' ? 6 : 1;
+    const els = [];
+    for (let k = 0; k < parts; k++){
+      const b = document.createElement('i');
+      b.style.left = (k * 100 / parts) + '%';
+      b.style.width = (100 / parts + 0.3) + '%';
+      layer.appendChild(b);
+      els.push(b);
+    }
+    const IN = { wipe: [{ transform: 'translateX(100%)' }, { transform: 'none' }], bars: [{ transform: 'scaleY(0)' }, { transform: 'none' }], iris: [{ clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)' }] };
+    const OUT = { wipe: [{ transform: 'none' }, { transform: 'translateX(-100%)' }], bars: [{ transform: 'none' }, { transform: 'scaleY(0)' }], iris: [{ clipPath: 'circle(75% at 50% 50%)' }, { clipPath: 'circle(0% at 50% 50%)' }] };
+    const run = (frames, k) => els[k].animate(frames, { duration: 300, delay: k * 35, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' }).finished;
+    Promise.all(els.map((_, k) => run(IN[name], k)))
+      .then(() => { swap(); return Promise.all(els.map((_, k) => run(OUT[name], k))); })
+      .catch(() => swap())
+      .then(() => { layer.hidden = true; layer.textContent = ''; });
+  }
+
+  function go(i, opts){
+    opts = opts || {};
+    if (!slides.length) return;
+    const prev = idx;
+    idx = Math.max(0, Math.min(slides.length - 1, i));
+    const name = opts.instant || idx === prev ? 'none' : transition.name;
+    if (name === 'slide') place(idx);
+    else if (name === 'wipe' || name === 'bars' || name === 'iris') cover(name, () => placeInstantly(idx));
+    else {
+      placeInstantly(idx);
+      if (REVEAL[name]) REVEAL[name](slides[idx]);
+    }
+    [...nav.children].forEach((d, j) => d.classList.toggle('active', j === idx));
+    counter.textContent = pad(idx + 1) + ' / ' + pad(slides.length);
+    document.body.classList.toggle('on-dark', slides[idx].classList.contains('dark') || slides[idx].hasAttribute('data-dark'));
+    if (notesPanel.classList.contains('open')) renderNotes();
+    document.dispatchEvent(new CustomEvent('deck:change', { detail: { index: idx, slide: slides[idx] } }));
+  }
+
+  // Re-read the page list (after reordering, skipping, deleting or switching layouts)
+  // and keep the current slide in view when it still exists.
+  function refresh(){
+    const current = slides[idx];
+    slides = list();
+    const total = slides.length;
+    slides.forEach((slide, i) => {
+      slide.querySelectorAll('[data-page-number]').forEach(label => { label.textContent = pad(i + 1) + ' / ' + pad(total); });
+      slide.querySelectorAll('[data-page-index]').forEach(label => { label.textContent = pad(i + 1); });
+    });
+    nav.textContent = '';
+    slides.forEach((s, i) => {
+      const dot = document.createElement('button');
+      dot.setAttribute('aria-label', 'Ir para o slide ' + (i + 1));
+      dot.addEventListener('click', () => go(i));
+      nav.appendChild(dot);
+    });
+    if (!total) { counter.textContent = ''; return; }
+    const keep = slides.indexOf(current);
+    go(keep >= 0 ? keep : Math.min(idx, total - 1), { instant: true });
+  }
+
+  function renderNotes(){
+    const id = noteKey(slides[idx]);
+    const n = id && window.__SLIDE_NOTES__ && window.__SLIDE_NOTES__[id];
+    const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    if (!n) { notesPanel.innerHTML = '<div class="notes-empty">No notes for this slide.</div>'; return; }
+    const talk = (n.talk || n.points || []).map(t => '<li>' + esc(t) + '</li>').join('');
+    notesPanel.innerHTML =
+      '<h3>' + esc(n.title || '') + '</h3>' +
+      (talk ? '<div class="notes-section">Talking points</div><ul>' + talk + '</ul>' : '');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    /* typing in the edit layer or a form control is not navigation */
+    if (e.target.closest && e.target.closest('[contenteditable="true"],input,textarea,select,dialog,button,a')) return;
+    if (overview.classList.contains('open')) {
+      if (e.key === 'Escape') toggleOverview(false);
+      return;
+    }
+    if (e.key === 'ArrowRight' || e.key === 'PageDown' || e.key === ' ') { go(idx + 1); e.preventDefault(); }
+    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { go(idx - 1); e.preventDefault(); }
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(slides.length - 1);
+    else if (e.key === 'Escape') toggleOverview(true);
+    else if (e.key.toLowerCase() === 'n') toggleNotes();
+  });
+
+  let wheelLock = false;
+  document.addEventListener('wheel', (e) => {
+    if (wheelLock || Math.abs(e.deltaY) < 12) return;
+    if (e.target.closest && e.target.closest('[data-own-scroll]')) return;
+    wheelLock = true;
+    go(idx + (e.deltaY > 0 ? 1 : -1));
+    setTimeout(() => { wheelLock = false; }, 550);
+  }, { passive: true });
+
+  let touchX = null;
+  document.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', (e) => {
+    if (touchX === null) return;
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 50) go(idx + (dx < 0 ? 1 : -1));
+    touchX = null;
+  }, { passive: true });
+
+  document.getElementById('prev-btn').addEventListener('click', () => go(idx - 1));
+  document.getElementById('next-btn').addEventListener('click', () => go(idx + 1));
+
+  function buildOverview(){
+    overview.innerHTML = '';
+    slides.forEach((s, i) => {
+      const card = document.createElement('div');
+      card.className = 'ov-card' + (i === idx ? ' current' : '');
+      const clone = s.cloneNode(true);
+      clone.classList.add('ov-clone');
+      clone.removeAttribute('id');
+      card.appendChild(clone);
+      const label = document.createElement('div');
+      label.className = 'ov-label';
+      label.textContent = String(i + 1).padStart(2, '0') + ' · ' + (s.dataset.slideId || '');
+      card.appendChild(label);
+      card.addEventListener('click', () => { go(i); toggleOverview(false); });
+      overview.appendChild(card);
+      /* scale the clone to fill whatever width the grid actually gave this
+         card — a fixed scale would leave dead space on wider/narrower grids */
+      clone.style.transform = 'scale(' + (card.clientWidth / 1600) + ')';
+    });
+  }
+  function toggleOverview(force){
+    const open = force !== undefined ? force : !overview.classList.contains('open');
+    /* class must be applied (and laid out) BEFORE measuring card widths in
+       buildOverview — measuring while #overview is still display:none
+       always reads 0 and collapses every thumbnail to scale(0) */
+    overview.classList.toggle('open', open);
+    if (open) requestAnimationFrame(buildOverview);
+  }
+  document.getElementById('overview-btn').addEventListener('click', () => toggleOverview());
+
+  function toggleNotes(force){
+    const open = force !== undefined ? force : !notesPanel.classList.contains('open');
+    notesPanel.classList.toggle('open', open);
+    if (open) renderNotes();
+  }
+  document.getElementById('notes-btn').addEventListener('click', () => toggleNotes());
+
+  window.__deck = {
+    go,
+    next: () => go(idx + 1),
+    prev: () => go(idx - 1),
+    refresh,
+    slides: () => slides.slice(),
+    index: () => idx,
+    current: () => slides[idx],
+    includeSkipped(on){ includeSkipped = Boolean(on); document.body.classList.toggle('deck-show-skipped', includeSkipped); refresh(); },
+    setTransition(name, color){ transition = { name: TRANSITIONS.includes(name) ? name : 'slide', color: color || '' }; },
+    transition: () => ({ name: transition.name, color: transition.color }),
+    transitions: TRANSITIONS.slice(),
+    renderNotes: () => { if (notesPanel.classList.contains('open')) renderNotes(); },
+  };
+  window.__deckGo = i => go(i, { instant: true }); /* exposed for automated QA only */
+  refresh();
+})();
+</script>
+
+<script>
+/* ================================================================
+   DECK STUDIO — the in-browser editing workspace.
+   Independent implementation. Press E to open it: a console bar
+   (play, export, undo, reset), a slide rail (reorder, duplicate,
+   skip, delete) and a properties panel (theme preset, transition,
+   layout variant, slide properties, speaker notes, and the style of
+   the selected text or picture). Text and pictures are edited in
+   place on the slide.
+   All of it is one state object kept in #deck-edits (written into
+   the file by scripts/serve-deck.mjs) and in localStorage. Content
+   edits are pinned to the authored value they replace; settings are
+   keyed by slide id and zone key. Export -> HTML bakes content,
+   order, duplicates and deletions into the slides and keeps the
+   settings. Configuration comes from #deck-studio-config (palette,
+   theme presets, canvas and decoration selectors, layout props) and
+   UI translations from #deck-studio-strings, both optional.
+   ================================================================ */
+(function(){
+  const deck = document.getElementById('deck');
+  const store = document.getElementById('deck-edits');
+  const engine = window.__deck;
+  if (!deck || !store || !engine) return;
+  const root = document.documentElement;
+  const body = document.body;
+  const byId = id => document.getElementById(id);
+  const parse = (text, fallback) => { try { const v = JSON.parse(text || ''); return v && typeof v === 'object' ? v : fallback; } catch (e) { return fallback; } };
+  const config = parse(byId('deck-studio-config') && byId('deck-studio-config').textContent, {});
+  const extra = parse(byId('deck-studio-strings') && byId('deck-studio-strings').textContent, null);
+  const stage = byId('deck-stage');
+  const topbar = byId('studio-topbar');
+  const rail = byId('studio-rail');
+  const railList = byId('st-rail-list');
+  const panel = byId('studio-panel');
+  const panelBody = byId('st-panel-body');
+  const statusEl = byId('st-status');
+  const fileInput = byId('deck-image-input');
+  const dialog = byId('deck-export-dialog');
+  const STORE_KEY = 'deck-edits:' + location.pathname;
+  const PREF_KEY = 'deck-studio-prefs';
+  const INLINE = new Set(['A','ABBR','B','BDI','BDO','BR','CITE','CODE','DFN','EM','I','KBD','MARK','Q','S','SAMP','SMALL','SPAN','STRONG','SUB','SUP','TIME','U','VAR','WBR']);
+  const NON_TEXT = new Set(['SCRIPT','STYLE','TEMPLATE','NOSCRIPT','SVG','CANVAS','VIDEO','AUDIO','IMG','PICTURE','IFRAME','OBJECT','EMBED','BUTTON','INPUT','SELECT','TEXTAREA','OPTION']);
+  const KEEP = new Set(['A','B','BR','CODE','EM','I','MARK','S','SMALL','SPAN','STRONG','SUB','SUP','U']);
+  const TRANSITION_LABELS = { slide: 'Slide', fade: 'Fade', zoom: 'Zoom', rise: 'Rise', wipe: 'Colour wipe', bars: 'Colour bars', iris: 'Iris', none: 'None' };
+  const tag = el => String(el.tagName || '').toUpperCase();
+  const isSlide = el => el.classList && el.classList.contains('slide');
+  const pad = n => String(n).padStart(2, '0');
+  const clone = v => JSON.parse(JSON.stringify(v));
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const cssId = s => (window.CSS && CSS.escape ? CSS.escape(s) : String(s).replace(/["\\]/g, '\\$&'));
+  function hash(s){ let h = 2166136261; for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36) + '.' + s.length.toString(36); }
+
+  /* ---------------- preferences and UI strings ---------------- */
+  let prefs = {};
+  try { prefs = JSON.parse(localStorage.getItem(PREF_KEY) || '{}') || {}; } catch (e) { prefs = {}; }
+  const savePrefs = () => { try { localStorage.setItem(PREF_KEY, JSON.stringify(prefs)); } catch (e) { /* per-viewer only */ } };
+  let lang = extra && prefs.lang === extra.lang ? extra.lang : 'en';
+  const t = s => (lang !== 'en' && extra && extra.strings && extra.strings[s]) || s;
+  function translateStatic(){
+    document.querySelectorAll('[data-st-text]').forEach(el => { el.textContent = t(el.getAttribute('data-st-text')); });
+    document.querySelectorAll('[data-st-title]').forEach(el => { el.title = t(el.getAttribute('data-st-title')); });
+    const btn = byId('st-lang');
+    if (btn){ btn.hidden = !extra; if (extra) btn.textContent = lang === 'en' ? (extra.short || extra.label || extra.lang) : 'EN'; }
+  }
+
+  /* ---------------- palette and theme presets ---------------- */
+  const rootVar = name => getComputedStyle(root).getPropertyValue(name).trim();
+  const palette = Array.isArray(config.palette) && config.palette.length
+    ? config.palette
+    : [{ name: 'Ink', value: rootVar('--ink') || '#141414' }, { name: 'Paper', value: rootVar('--paper') || '#fafaf8' }, { name: 'Accent', value: rootVar('--accent') || '#2b5fff' }, { name: 'White', value: '#ffffff' }, { name: 'Black', value: '#000000' }];
+  const themes = Array.isArray(config.themes) ? config.themes : [];
+
+  function parseColor(s){
+    s = String(s).trim();
+    let m = /^#([0-9a-f]{3,8})$/i.exec(s);
+    if (m){
+      let h = m[1];
+      if (h.length === 3 || h.length === 4) h = h.split('').map(c => c + c).join('');
+      if (h.length !== 6 && h.length !== 8) return null;
+      return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16), a: h.length === 8 ? parseInt(h.slice(6, 8), 16) / 255 : 1, hex: true, alphaHex: h.length === 8 };
+    }
+    m = /^rgba?\(([^)]+)\)$/i.exec(s);
+    if (m){
+      const p = m[1].split(/[\s,/]+/).filter(Boolean).map(v => (v.endsWith('%') ? parseFloat(v) * 2.55 : parseFloat(v)));
+      if (p.length < 3 || p.slice(0, 3).some(isNaN)) return null;
+      return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? (String(m[1]).includes('%') && p[3] > 1 ? p[3] / 255 : p[3]) : 1, hex: false };
+    }
+    return null;
+  }
+  function toHsl({ r, g, b }){
+    r /= 255; g /= 255; b /= 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2;
+    if (max === min) return { h: 0, s: 0, l };
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    const h = max === r ? ((g - b) / d + (g < b ? 6 : 0)) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return { h: h * 60, s, l };
+  }
+  function fromHsl(h, s, l){
+    h = ((h % 360) + 360) % 360 / 360;
+    if (!s) return { r: l * 255, g: l * 255, b: l * 255 };
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
+    const f = tt => { if (tt < 0) tt += 1; if (tt > 1) tt -= 1; return tt < 1 / 6 ? p + (q - p) * 6 * tt : tt < 1 / 2 ? q : tt < 2 / 3 ? p + (q - p) * (2 / 3 - tt) * 6 : p; };
+    return { r: f(h + 1 / 3) * 255, g: f(h) * 255, b: f(h - 1 / 3) * 255 };
+  }
+  const hex2 = v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0');
+  function formatColor(c, like){
+    if (like && !like.hex) return c.a < 1 ? `rgba(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)}, ${+c.a.toFixed(3)})` : `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`;
+    return '#' + hex2(c.r) + hex2(c.g) + hex2(c.b) + (like && like.alphaHex ? hex2(c.a * 255) : '');
+  }
+  // A preset maps a few base colours to new ones. Every saturated colour in the
+  // stylesheets follows its nearest base colour (same hue/saturation/lightness
+  // shift), so tints and shades of one family move together. Colours below the
+  // saturation floor count as neutrals and stay; the floor drops to just under
+  // the least saturated base colour, so a muted palette (sage, dusty rose) moves.
+  let remap = null;
+  let remapFloor = 0.18;
+  function setRemap(theme){
+    remap = theme && theme.map && Object.keys(theme.map).length
+      ? Object.entries(theme.map).map(([from, to]) => ({ a: toHsl(parseColor(from) || { r: 0, g: 0, b: 0 }), b: toHsl(parseColor(to) || { r: 0, g: 0, b: 0 }) }))
+      : null;
+    remapFloor = remap ? Math.max(0.08, Math.min(0.18, ...remap.map(m => m.a.s - 0.04))) : 0.18;
+  }
+  function remapColor(c){
+    if (!remap) return null;
+    const h = toHsl(c);
+    if (h.s < remapFloor || h.l > 0.94 || h.l < 0.07) return null;
+    let best = null, bestD = Infinity;
+    for (const m of remap){
+      const dh = Math.min(Math.abs(h.h - m.a.h), 360 - Math.abs(h.h - m.a.h));
+      const d = dh / 30 + Math.abs(h.s - m.a.s) + Math.abs(h.l - m.a.l) * 1.5;
+      if (d < bestD){ bestD = d; best = m; }
+    }
+    if (!best || bestD > 1.6) return null;
+    const ns = Math.max(0, Math.min(1, best.a.s ? h.s * best.b.s / best.a.s : best.b.s));
+    const nl = Math.max(0.03, Math.min(0.97, h.l + (best.b.l - best.a.l)));
+    return Object.assign(fromHsl(h.h + best.b.h - best.a.h, ns, nl), { a: c.a });
+  }
+  function remapCss(text){
+    return text.replace(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g, m => {
+      const c = parseColor(m);
+      const r = c && remapColor(c);
+      return r ? formatColor(r, c) : m;
+    });
+  }
+  // A colour value in the state is "palette:N" (follows the theme) or a literal.
+  function resolveColor(v){
+    if (!v) return '';
+    const m = /^palette:(\d+)$/.exec(v);
+    if (!m) return v;
+    const base = palette[Number(m[1])] && palette[Number(m[1])].value;
+    const c = base && parseColor(base);
+    const r = c && remapColor(c);
+    return r ? formatColor(r, c) : base || '';
+  }
+
+  /* ---------------- authored snapshot ---------------- */
+  const sections = () => [...deck.children].filter(isSlide);
+  const keyOf = s => s.dataset.slideId + (s.dataset.variant ? '@' + s.dataset.variant : '');
+  sections().forEach((s, i) => { if (!s.dataset.slideId) s.dataset.slideId = 'slide-' + (i + 1); });
+  const pristine = new Map(sections().map(s => [keyOf(s), s.cloneNode(true)]));
+  const authoredNotes = clone(window.__SLIDE_NOTES__ || {});
+  const styleSheets = [...document.querySelectorAll('style')].filter(el => el.id !== 'deck-studio-style').map(el => ({ el, text: el.textContent }));
+  const touched = new Map(); // element -> authored attributes, restored before baking
+  function remember(el){
+    if (!touched.has(el)) touched.set(el, { style: el.getAttribute('style'), cls: el.getAttribute('class'), hidden: el.hidden, skip: el.getAttribute('data-skip') });
+    return touched.get(el);
+  }
+  function revertRuntime(){
+    touched.forEach((a, el) => {
+      a.style == null ? el.removeAttribute('style') : el.setAttribute('style', a.style);
+      a.cls == null ? el.removeAttribute('class') : el.setAttribute('class', a.cls);
+      el.hidden = a.hidden;
+      a.skip == null ? el.removeAttribute('data-skip') : el.setAttribute('data-skip', a.skip);
+    });
+    styleSheets.forEach(({ el, text }) => { if (el.textContent !== text) el.textContent = text; });
+    appliedTheme = null;
+  }
+
+  /* ---------------- state ---------------- */
+  function blank(){ return { v: 2, text: {}, img: {}, style: {}, notes: {}, slides: {}, deck: {} }; }
+  const plain = v => (v && typeof v === 'object' && !Array.isArray(v) ? v : {});
+  function normalize(v){
+    v = plain(v);
+    return { v: 2, text: plain(v.text), img: plain(v.img), style: plain(v.style), notes: plain(v.notes), slides: plain(v.slides), deck: plain(v.deck) };
+  }
+  const embedded = normalize(parse(store.textContent, {}));
+  let baseHash = hash(JSON.stringify(embedded));
+  let state = embedded;
+  try {
+    const local = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+    if (local && local.base === baseHash) state = normalize(local.edits);
+  } catch (e) { /* storage unavailable: the file state still applies */ }
+  const history = [];
+  const future = [];
+  function commit(fn){
+    history.push(JSON.stringify(state));
+    if (history.length > 120) history.shift();
+    future.length = 0;
+    fn(state);
+    apply();
+    persistSoon();
+  }
+  function undo(){ if (!history.length) return false; future.push(JSON.stringify(state)); state = JSON.parse(history.pop()); apply(); persistSoon(); return true; }
+  function redo(){ if (!future.length) return false; history.push(JSON.stringify(state)); state = JSON.parse(future.pop()); apply(); persistSoon(); return true; }
+  const sl = () => { const s = state.slides; s.order = s.order || []; s.skip = s.skip || {}; s.deleted = s.deleted || []; s.dupes = s.dupes || []; s.variant = s.variant || {}; s.props = s.props || {}; return s; };
+  // Empty containers carry no meaning; compare and persist the pruned form.
+  function prune(v){
+    if (Array.isArray(v)) return v.length ? v : undefined;
+    if (v && typeof v === 'object'){
+      const out = {};
+      Object.entries(v).forEach(([k, x]) => { const p = prune(x); if (p !== undefined) out[k] = p; });
+      return Object.keys(out).length ? out : undefined;
+    }
+    return v;
+  }
+  function changed(){ const p = prune(normalize(state)); return Boolean(p && Object.keys(p).some(k => k !== 'v')); }
+
+  /* ---------------- structure: groups, duplicates, order, variants ---------------- */
+  function groups(){
+    const out = [];
+    const seen = new Map();
+    for (const s of sections()){
+      const id = s.dataset.slideId;
+      if (!seen.has(id)){ const g = { id, members: [] }; seen.set(id, g); out.push(g); }
+      seen.get(id).members.push(s);
+    }
+    return out;
+  }
+  function activeOf(g){
+    const want = plain(state.slides.variant)[g.id];
+    return g.members.find(m => m.dataset.variant && m.dataset.variant === want)
+      || g.members.find(m => m.hasAttribute('data-variant-active'))
+      || g.members[0];
+  }
+  function applyStructure(){
+    const s = state.slides;
+    const dupes = Array.isArray(s.dupes) ? s.dupes : [];
+    const wanted = new Set(dupes.map(d => d.key));
+    sections().forEach(sec => { if (sec.hasAttribute('data-st-dupe') && !wanted.has(sec.dataset.slideId)) sec.remove(); });
+    for (const d of dupes){
+      if (deck.querySelector(':scope > .slide[data-slide-id="' + cssId(d.key) + '"]')) continue;
+      const src = pristine.get(d.of + (d.variant ? '@' + d.variant : '')) || pristine.get(d.of);
+      if (!src) continue;
+      const copy = src.cloneNode(true);
+      copy.dataset.slideId = d.key;
+      copy.removeAttribute('data-variant');
+      copy.removeAttribute('data-variant-active');
+      copy.hidden = false;
+      copy.setAttribute('data-st-dupe', '');
+      if (!pristine.has(d.key)) pristine.set(d.key, copy.cloneNode(true));
+      const anchor = groups().find(g => g.id === d.of);
+      if (anchor) anchor.members[anchor.members.length - 1].after(copy); else deck.appendChild(copy);
+    }
+    const gs = groups();
+    if (Array.isArray(s.order) && s.order.length){
+      const byKey = new Map(gs.map(g => [g.id, g]));
+      const result = s.order.filter(id => byKey.has(id)).map(id => byKey.get(id));
+      gs.forEach((g, i) => {
+        if (result.includes(g)) return;
+        const prev = gs.slice(0, i).reverse().find(p => result.includes(p));
+        result.splice(prev ? result.indexOf(prev) + 1 : 0, 0, g);
+      });
+      if (result.some((g, i) => g !== gs[i])) result.forEach(g => g.members.forEach(m => deck.appendChild(m)));
+    }
+    const deleted = new Set(Array.isArray(s.deleted) ? s.deleted : []);
+    const skip = plain(s.skip);
+    for (const g of groups()){
+      const active = activeOf(g);
+      g.members.forEach(m => {
+        const a = remember(m);
+        const gone = deleted.has(g.id);
+        m.hidden = gone || m !== active;
+        gone ? m.setAttribute('data-st-deleted', '') : m.removeAttribute('data-st-deleted');
+        if (g.id in skip) skip[g.id] ? m.setAttribute('data-skip', '') : m.removeAttribute('data-skip');
+        else a.skip == null ? m.removeAttribute('data-skip') : m.setAttribute('data-skip', a.skip);
+      });
+    }
+  }
+
+  /* ---------------- editable zones ---------------- */
+  let zones = new Map();
+  let zoneOf = new WeakMap();
+  // A row of chips (inline-block or inline-flex spans with no text of their
+  // own between them) is several zones, not one: each chip lays out on its
+  // own. Inside running text such spans are words and stay in the block.
+  // Tags come from the pristine copy, display from the live element.
+  const ownText = el => [...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim());
+  function allInline(el, live){
+    const kids = el.children;
+    for (let i = 0; i < kids.length; i++){
+      const c = kids[i], l = live && live.children[i];
+      if (!INLINE.has(tag(c))) return false;
+      if (l && l.isConnected && !ownText(el)){ const d = getComputedStyle(l).display; if (d !== 'inline' && d !== 'contents' && d !== 'none') return false; }
+      if (!allInline(c, l)) return false;
+    }
+    return true;
+  }
+  function isTextBlock(el, live){
+    if (el.dataset && el.dataset.edit === 'text') return true;
+    if (el instanceof SVGElement || NON_TEXT.has(tag(el))) return false;
+    if (el.hasAttribute('data-page-number') || el.hasAttribute('data-page-index')) return false;
+    return el.textContent.trim() !== '' && allInline(el, live);
+  }
+  function discover(){
+    zones = new Map();
+    zoneOf = new WeakMap();
+    for (const sec of sections()){
+      const key = keyOf(sec);
+      const base = pristine.get(key);
+      if (base) walk(sec, base, key, '');
+    }
+  }
+  function walk(node, baseNode, key, path){
+    const kids = [...node.children];
+    const baseKids = [...baseNode.children];
+    kids.forEach((child, i) => {
+      const b = baseKids[i];
+      if (!b || tag(b) !== tag(child)) return;
+      const p = path ? path + '.' + i : String(i);
+      if (b.dataset && b.dataset.edit === 'off') return;
+      if (tag(child) === 'IMG'){ add(key + '/img:' + (b.dataset.editId || b.dataset.artId || p), child, 'img', b); return; }
+      if (child instanceof SVGElement) return;
+      if (isTextBlock(b, child)){ add(key + '/' + (b.dataset.editId || p), child, 'text', b); return; }
+      walk(child, b, key, p);
+    });
+  }
+  function add(id, el, kind, b){
+    let k = id;
+    for (let n = 2; zones.has(k); n++) k = id + '~' + n;
+    const z = { id: k, el, kind, slide: el.closest('.slide'), base: kind === 'text' ? b.innerHTML : hash(b.getAttribute('src') || ''), src: b.getAttribute('src'), srcset: b.getAttribute('srcset'), style: b.getAttribute('style') };
+    zones.set(k, z);
+    zoneOf.set(el, z);
+  }
+  function showImage(z, src){
+    if (src == null){
+      if (z.el.getAttribute('src') !== z.src){ z.src == null ? z.el.removeAttribute('src') : z.el.setAttribute('src', z.src); if (z.srcset != null) z.el.setAttribute('srcset', z.srcset); }
+      return;
+    }
+    if (z.el.getAttribute('src') !== src){ z.el.removeAttribute('srcset'); z.el.setAttribute('src', src); }
+  }
+  function applyZones(){
+    zones.forEach(z => {
+      if (z.kind === 'text'){
+        const e = state.text[z.id];
+        const next = e && e.from === z.base ? e.to : z.base;
+        if (z.el.innerHTML !== next && document.activeElement !== z.el) z.el.innerHTML = next;
+      } else {
+        const e = state.img[z.id];
+        showImage(z, e && e.from === z.base ? e.to : null);
+      }
+      applyZoneStyle(z);
+    });
+  }
+  function applyZoneStyle(z){
+    const s = state.style[z.id];
+    remember(z.el);
+    const want = z.style == null ? null : z.style;
+    if (z.el.getAttribute('style') !== want) want == null ? z.el.removeAttribute('style') : z.el.setAttribute('style', want);
+    if (!s) return;
+    const st = z.el.style;
+    if (s.scale && s.scale !== 1){ const px = parseFloat(getComputedStyle(z.el).fontSize) || 16; st.fontSize = (px * s.scale / innerWidth * 100).toFixed(3) + 'vw'; }
+    if (s.color) st.color = resolveColor(s.color);
+    if (s.align) st.textAlign = s.align;
+    if (s.bold != null) st.fontWeight = s.bold ? '800' : '400';
+    if (s.italic != null) st.fontStyle = s.italic ? 'italic' : 'normal';
+    if (s.fit) st.objectFit = s.fit;
+    if (s.focus) st.objectPosition = s.focus;
+    if (s.zoom && s.zoom !== 1){ st.transform = 'scale(' + s.zoom + ')'; st.transformOrigin = s.focus || '50% 50%'; }
+  }
+  function recordText(z){
+    const clean = sanitize(z.el.innerHTML);
+    if (clean === z.base || clean === sanitize(z.base)) delete state.text[z.id];
+    else state.text[z.id] = { from: z.base, to: clean };
+  }
+  function recordImage(z, src){
+    if (src == null || hash(src) === z.base) delete state.img[z.id];
+    else state.img[z.id] = { from: z.base, to: src };
+  }
+  function sanitize(html){
+    const tpl = document.createElement('template');
+    tpl.innerHTML = html;
+    (function clean(node){
+      for (const c of [...node.childNodes]){
+        if (c.nodeType === 3) continue;
+        if (c.nodeType !== 1){ c.remove(); continue; }
+        const tg = tag(c);
+        if (['SCRIPT', 'STYLE', 'TEMPLATE', 'IFRAME', 'OBJECT', 'EMBED'].includes(tg)){ c.remove(); continue; }
+        clean(c);
+        if (tg === 'DIV' || tg === 'P'){ c.replaceWith(...(c.previousSibling ? [document.createElement('br')] : []), ...c.childNodes); continue; }
+        if (!KEEP.has(tg)){ c.replaceWith(...c.childNodes); continue; }
+        for (const a of [...c.attributes]){
+          const ok = a.name === 'class' || (a.name === 'style' && tg !== 'A') || (tg === 'A' && a.name === 'href' && /^(https?:|mailto:)/i.test(a.value));
+          if (!ok) c.removeAttribute(a.name);
+        }
+      }
+    })(tpl.content);
+    return tpl.innerHTML;
+  }
+
+  /* ---------------- slide properties, theme, notes, transition ---------------- */
+  let decorRuleAdded = false;
+  // Slide properties: config.props maps a layout class (or "slide" for every
+  // slide) to option lists; a slide's own data-props adds to them.
+  function propDefs(sec){
+    const out = [];
+    const map = plain(config.props);
+    const authored = String((touched.get(sec) || {}).cls || sec.getAttribute('class') || '').split(/\s+/);
+    for (const cls of authored) if (Array.isArray(map[cls])) out.push(...map[cls]);
+    const own = parse(sec.dataset.props, null);
+    if (Array.isArray(own)) out.push(...own);
+    const seen = new Set();
+    return out.filter(d => d && d.key && !seen.has(d.key) && seen.add(d.key));
+  }
+  function applyProps(){
+    if (config.decor && !decorRuleAdded){
+      const rule = document.createElement('style');
+      rule.id = 'deck-studio-decor';
+      rule.textContent = '.st-decor-off :is(' + config.decor + '){display:none!important}';
+      document.head.appendChild(rule);
+      decorRuleAdded = true;
+    }
+    const all = plain(state.slides.props);
+    for (const sec of sections()){
+      const p = plain(all[sec.dataset.slideId]);
+      const a = remember(sec);
+      const classes = new Set(String(a.cls || '').split(/\s+/).filter(Boolean));
+      for (const def of propDefs(sec)){
+        if (!(def.key in p)) continue;
+        if (def.type === 'toggle') { if (def.class) (def.invert ? !p[def.key] : p[def.key]) ? classes.add(def.class) : classes.delete(def.class); continue; }
+        (def.options || []).forEach(o => o.value && classes.delete(o.value));
+        if (p[def.key]) classes.add(p[def.key]);
+      }
+      if (p.decor === false) classes.add('st-decor-off'); else classes.delete('st-decor-off');
+      const cls = [...classes].join(' ');
+      if ((sec.getAttribute('class') || '') !== cls) sec.setAttribute('class', cls);
+      const canvas = (config.canvas && sec.querySelector(config.canvas)) || sec;
+      const ca = remember(canvas);
+      if (canvas.getAttribute('style') !== ca.style) ca.style == null ? canvas.removeAttribute('style') : canvas.setAttribute('style', ca.style);
+      if (p.bg) canvas.style.background = resolveColor(p.bg);
+    }
+  }
+  let appliedTheme = null;
+  function currentTheme(){ return state.deck.theme != null ? state.deck.theme : (root.dataset.deckTheme || (themes[0] && themes[0].id) || ''); }
+  function applyTheme(){
+    const id = currentTheme();
+    if (id === appliedTheme) return;
+    appliedTheme = id;
+    setRemap(themes.find(th => th.id === id));
+    styleSheets.forEach(({ el, text }) => { const next = remap ? remapCss(text) : text; if (el.textContent !== next) el.textContent = next; });
+  }
+  function currentNotes(){
+    const out = clone(authoredNotes);
+    Object.entries(plain(state.notes)).forEach(([id, n]) => { out[id] = n; });
+    return out;
+  }
+  function applyNotes(){
+    const merged = currentNotes();
+    const live = window.__SLIDE_NOTES__ || (window.__SLIDE_NOTES__ = {});
+    Object.keys(live).forEach(k => { if (!(k in merged)) delete live[k]; });
+    Object.assign(live, merged);
+    engine.renderNotes();
+  }
+  function applyTransition(){
+    const name = state.deck.transition || root.dataset.deckTransition || 'slide';
+    engine.setTransition(name, resolveColor(state.deck.transitionColor || root.dataset.deckTransitionColor || ''));
+  }
+
+  /* ---------------- apply everything ---------------- */
+  let selectedId = null;
+  let isOpen = false;
+  function apply(){
+    applyStructure();
+    discover();
+    applyTheme();
+    applyZones();
+    applyProps();
+    applyNotes();
+    applyTransition();
+    if (isOpen) setEditable(true);
+    engine.refresh();
+    if (isOpen){ renderRail(); renderPanel(); }
+    status();
+  }
+
+  /* ---------------- saving ---------------- */
+  let serverMode = false;
+  let saveTimer = null;
+  /* A sandboxed preview (a store page iframe) has an opaque origin and no
+     storage, downloads or printing. file:// pages also report origin "null"
+     but keep their storage, so they are not mistaken for one. */
+  const sandboxed = (() => {
+    if (window.origin !== 'null') return false;
+    try { void window.localStorage; return false; } catch (e) { return true; }
+  })();
+  function status(msg){
+    if (!statusEl) return;
+    statusEl.textContent = msg || (sandboxed ? t('Preview · edits are not kept') : !changed() ? t('No changes') : serverMode ? t('All changes saved to the file') : t('Saved in this browser · Export HTML to keep'));
+  }
+  function persistSoon(){ status(t('Saving…')); clearTimeout(saveTimer); saveTimer = setTimeout(persist, 400); }
+  async function persist(){
+    saveTimer = null;
+    let local = true;
+    try { localStorage.setItem(STORE_KEY, JSON.stringify({ base: baseHash, edits: state })); } catch (e) { local = false; }
+    if (serverMode){
+      try {
+        const res = await fetch('/__deck/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ edits: state }) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        baseHash = hash(JSON.stringify(normalize(state)));
+        try { localStorage.setItem(STORE_KEY, JSON.stringify({ base: baseHash, edits: state })); } catch (e) { /* the file has it */ }
+        status();
+      } catch (e) { status(t('File save failed') + (local ? ' · ' + t('kept in this browser') : '')); }
+      return;
+    }
+    status(local || sandboxed ? '' : t('Browser storage is full · export HTML'));
+  }
+  async function flush(){ if (saveTimer){ clearTimeout(saveTimer); await persist(); } }
+
+  // Bake: content (text, pictures, order, duplicates, deletions, notes) goes into
+  // the slides; settings (theme, transition, layout choice, skips, properties,
+  // element styles) stay in #deck-edits so they remain adjustable.
+  function bakedHtml(){
+    const wasOpen = isOpen;
+    /* finish an in-progress text edit first, so it is recorded for undo
+       (dropping contenteditable from a focused element fires no focusout) */
+    const typingEl = typing(document.activeElement);
+    if (typingEl) typingEl.blur();
+    if (wasOpen) setEditable(false);
+    revertRuntime();
+    const copy = root.cloneNode(true);
+    apply();
+    if (wasOpen) setEditable(true);
+    copy.querySelectorAll('#deck > .slide[data-st-deleted]').forEach(n => n.remove());
+    copy.querySelectorAll('[data-st-dupe]').forEach(n => n.removeAttribute('data-st-dupe'));
+    copy.querySelectorAll('[data-edit-live],[contenteditable],[data-st-selected]').forEach(n => { n.removeAttribute('data-edit-live'); n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck'); n.removeAttribute('data-st-selected'); });
+    copy.querySelectorAll('[data-runtime="clear"]').forEach(n => { n.textContent = ''; });
+    copy.querySelectorAll('[data-runtime="remove"],#deck-studio-decor').forEach(n => n.remove());
+    ['#deck', '#deck-stage'].forEach(sel => { const n = copy.querySelector(sel); if (n) n.removeAttribute('style'); });
+    const b = copy.querySelector('body');
+    if (b){ ['studio', 'editing', 'on-dark', 'exporting', 'capture', 'st-dark', 'st-collapsed', 'st-resizing', 'deck-show-skipped'].forEach(c => b.classList.remove(c)); if (!b.classList.length) b.removeAttribute('class'); }
+    const dlg = copy.querySelector('#deck-export-dialog');
+    if (dlg) dlg.removeAttribute('open');
+    const notesScript = [...copy.querySelectorAll('script')].find(s => /window\.__SLIDE_NOTES__\s*=/.test(s.textContent));
+    if (notesScript) notesScript.textContent = '\nwindow.__SLIDE_NOTES__ = ' + JSON.stringify(currentNotes(), null, 2).replace(/</g, '\\u003c') + ';\n';
+    const s = state.slides;
+    const settings = { v: 2 };
+    if (Object.keys(plain(state.style)).length) settings.style = state.style;
+    const keepSlides = {};
+    if (Object.keys(plain(s.skip)).length) keepSlides.skip = s.skip;
+    if (Object.keys(plain(s.variant)).length) keepSlides.variant = s.variant;
+    if (Object.keys(plain(s.props)).length) keepSlides.props = s.props;
+    if (Object.keys(keepSlides).length) settings.slides = keepSlides;
+    if (Object.keys(plain(state.deck)).length) settings.deck = state.deck;
+    const st = copy.querySelector('#deck-edits');
+    if (st) st.textContent = Object.keys(settings).length > 1 ? JSON.stringify(settings).replace(/</g, '\\u003c') : '{}';
+    return '<!doctype html>\n' + copy.outerHTML;
+  }
+  async function saveHtml(){
+    await flush();
+    const name = decodeURIComponent(location.pathname.split('/').pop() || 'deck.html').replace(/\.html?$/i, '') + '-edited.html';
+    const url = URL.createObjectURL(new Blob([bakedHtml()], { type: 'text/html' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    status(t('Downloaded') + ' ' + name);
+  }
+  async function serverExport(format){
+    await flush();
+    status(format === 'pdf' ? t('Exporting PDF…') : t('Exporting PPTX…'));
+    try {
+      const res = await fetch('/__deck/export', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ format }) });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.download) throw new Error(out.error || 'HTTP ' + res.status);
+      location.assign(out.download);
+      status(t('Ready') + ' · ' + out.file);
+    } catch (e) { status(t('Export failed') + ' · ' + e.message); }
+  }
+  function exportAs(kind){
+    closeMenus();
+    if (sandboxed) return status(t('Export works in your own copy of the deck'));
+    if (kind === 'html') return saveHtml();
+    if (kind === 'pptx') return serverMode ? serverExport('pptx') : (dialog && dialog.showModal ? dialog.showModal() : null);
+    if (serverMode) return serverExport('pdf');
+    const wasOpen = isOpen;
+    setStudio(false);
+    const back = () => { window.removeEventListener('afterprint', back); if (wasOpen) setStudio(true); };
+    window.addEventListener('afterprint', back);
+    setTimeout(() => window.print(), 50);
+  }
+
+  /* ---------------- studio open/close and stage layout ---------------- */
+  function setEditable(on){
+    zones.forEach(z => {
+      if (on){
+        z.el.setAttribute('data-edit-live', '');
+        if (z.kind === 'text'){ z.el.setAttribute('contenteditable', 'true'); z.el.setAttribute('spellcheck', 'false'); }
+      } else {
+        z.el.removeAttribute('data-edit-live');
+        z.el.removeAttribute('data-st-selected');
+        if (z.kind === 'text'){ z.el.removeAttribute('contenteditable'); z.el.removeAttribute('spellcheck'); }
+      }
+    });
+    const sel = selectedId && zones.get(selectedId);
+    if (on && sel) sel.el.setAttribute('data-st-selected', '');
+  }
+  function setStudio(on){
+    on = Boolean(on) && !body.classList.contains('exporting');
+    isOpen = on;
+    body.classList.toggle('studio', on);
+    body.classList.toggle('editing', on);
+    body.classList.toggle('st-dark', on && Boolean(prefs.dark));
+    body.classList.toggle('st-collapsed', on && Boolean(prefs.collapsed));
+    if (!on){ selectedId = null; if (document.activeElement && deck.contains(document.activeElement)) document.activeElement.blur(); closeMenus(); }
+    setEditable(on);
+    engine.includeSkipped(on);
+    if (on){ translateStatic(); renderRail(); renderPanel(); layoutStage(); }
+    else { stage.removeAttribute('style'); railList.textContent = ''; panelBody.textContent = ''; }
+    const btn = byId('edit-btn');
+    if (btn) btn.textContent = on ? 'E · Done' : 'E · Edit';
+    status();
+  }
+  function layoutStage(){
+    if (!isOpen){ stage.removeAttribute('style'); return; }
+    const collapsed = body.classList.contains('st-collapsed');
+    const top = topbar.offsetHeight;
+    const left = collapsed ? 0 : rail.offsetWidth;
+    const right = collapsed ? 0 : panel.offsetWidth;
+    const gap = 28;
+    const aw = Math.max(120, innerWidth - left - right - gap * 2);
+    const ah = Math.max(80, innerHeight - top - gap * 2);
+    const s = Math.min(aw / innerWidth, ah / innerHeight);
+    stage.style.cssText = 'left:' + (left + gap + (aw - innerWidth * s) / 2) + 'px;top:' + (top + gap + (ah - innerHeight * s) / 2) + 'px;transform:scale(' + s + ')';
+  }
+  window.addEventListener('resize', () => { if (isOpen){ layoutStage(); renderRail(); } });
+
+  /* ---------------- rail ---------------- */
+  const ICON = {
+    copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h8"/></svg>',
+    eye: '<svg viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg>',
+    eyeOff: '<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.8 10.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.1 6.1C3.6 7.8 2 12 2 12s3.5 7 10 7a10 10 0 0 0 4.6-1.1"/></svg>',
+    trash: '<svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+    left: '<svg viewBox="0 0 24 24"><path d="M21 6H3M15 12H3M17 18H3"/></svg>',
+    center: '<svg viewBox="0 0 24 24"><path d="M21 6H3M17 12H7M19 18H5"/></svg>',
+    right: '<svg viewBox="0 0 24 24"><path d="M21 6H3M21 12H9M21 18H7"/></svg>',
+  };
+  function visibleGroups(){ const del = new Set(sl().deleted); return groups().filter(g => !del.has(g.id)); }
+  function thumb(box, slide){
+    box.textContent = '';
+    const w = box.clientWidth || 160;
+    const c = slide.cloneNode(true);
+    c.hidden = false;
+    c.removeAttribute('data-st-deleted');
+    c.querySelectorAll('[data-edit-live],[contenteditable],[data-st-selected]').forEach(n => { n.removeAttribute('contenteditable'); n.removeAttribute('data-edit-live'); n.removeAttribute('data-st-selected'); });
+    c.classList.add('st-thumb-clone');
+    c.style.transform = 'scale(' + (w / innerWidth) + ')';
+    box.appendChild(c);
+  }
+  let railTimer = null;
+  function renderRailSoon(){ clearTimeout(railTimer); railTimer = setTimeout(renderRail, 250); }
+  function renderRail(){
+    if (!isOpen) return;
+    const gs = visibleGroups();
+    const current = engine.current();
+    railList.textContent = '';
+    byId('st-rail-count').textContent = String(gs.length);
+    gs.forEach((g, i) => {
+      const active = activeOf(g);
+      const item = document.createElement('div');
+      item.className = 'st-slide' + (active === current ? ' current' : '') + (active.hasAttribute('data-skip') ? ' skipped' : '');
+      item.draggable = true;
+      item.dataset.id = g.id;
+      item.innerHTML = '<span class="st-num">' + pad(i + 1) + '</span><div class="st-thumb"></div><div class="st-tools">'
+        + '<button type="button" data-rail="dup" title="' + esc(t('Duplicate')) + '">' + ICON.copy + '</button>'
+        + '<button type="button" data-rail="skip" title="' + esc(active.hasAttribute('data-skip') ? t('Show when presenting') : t('Skip when presenting')) + '">' + (active.hasAttribute('data-skip') ? ICON.eye : ICON.eyeOff) + '</button>'
+        + '<button type="button" data-rail="del" title="' + esc(t('Delete')) + '">' + ICON.trash + '</button></div>';
+      railList.appendChild(item);
+      thumb(item.querySelector('.st-thumb'), active);
+    });
+    const cur = railList.querySelector('.current');
+    if (cur && cur.scrollIntoView) cur.scrollIntoView({ block: 'nearest' });
+  }
+  function goToGroup(id){
+    const g = groups().find(x => x.id === id);
+    if (!g) return;
+    const i = engine.slides().indexOf(activeOf(g));
+    if (i >= 0) engine.go(i, { instant: true });
+  }
+  railList.addEventListener('click', e => {
+    const item = e.target.closest('.st-slide');
+    if (!item) return;
+    const act = e.target.closest('[data-rail]');
+    if (act){ e.stopPropagation(); slideAction(act.dataset.rail, item.dataset.id); return; }
+    goToGroup(item.dataset.id);
+  });
+  let dragId = null;
+  railList.addEventListener('dragstart', e => { const item = e.target.closest('.st-slide'); if (!item) return; dragId = item.dataset.id; item.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); });
+  railList.addEventListener('dragend', () => { dragId = null; railList.querySelectorAll('.dragging,.drop-before,.drop-after').forEach(n => n.classList.remove('dragging', 'drop-before', 'drop-after')); });
+  railList.addEventListener('dragover', e => {
+    const item = e.target.closest('.st-slide');
+    if (!item || !dragId) return;
+    e.preventDefault();
+    railList.querySelectorAll('.drop-before,.drop-after').forEach(n => n.classList.remove('drop-before', 'drop-after'));
+    const r = item.getBoundingClientRect();
+    item.classList.add(e.clientY < r.top + r.height / 2 ? 'drop-before' : 'drop-after');
+  });
+  railList.addEventListener('drop', e => {
+    const item = e.target.closest('.st-slide');
+    if (!item || !dragId) return;
+    e.preventDefault();
+    const after = item.classList.contains('drop-after');
+    const target = item.dataset.id;
+    const moving = dragId;
+    if (target !== moving) moveSlide(moving, target, after);
+  });
+  function moveSlide(id, target, after){
+    commit(s => {
+      const order = groups().map(g => g.id).filter(x => x !== id);
+      const at = order.indexOf(target);
+      order.splice(after ? at + 1 : at, 0, id);
+      sl().order = order;
+    });
+  }
+  function slideAction(act, id){
+    const g = groups().find(x => x.id === id);
+    if (!g) return;
+    if (act === 'skip'){ const now = activeOf(g).hasAttribute('data-skip'); commit(() => { sl().skip[id] = !now; }); return; }
+    if (act === 'del'){
+      if (visibleGroups().length <= 1) { status(t('A deck needs at least one slide')); return; }
+      commit(() => {
+        const s = sl();
+        const dupe = s.dupes.find(d => d.key === id);
+        if (dupe){ s.dupes = s.dupes.filter(d => d.key !== id); s.order = s.order.filter(x => x !== id); dropKeyed(id); }
+        else if (!s.deleted.includes(id)) s.deleted.push(id);
+      });
+      return;
+    }
+    if (act === 'dup'){
+      const active = activeOf(g);
+      const src = active.hasAttribute('data-st-dupe') ? sl().dupes.find(d => d.key === id) : null;
+      const of = src ? src.of : id;
+      const variant = src ? src.variant : active.dataset.variant || '';
+      let n = 2;
+      while (groups().some(x => x.id === of + '~' + n) || sl().dupes.some(d => d.key === of + '~' + n)) n++;
+      const key = of + '~' + n;
+      commit(s => {
+        const st = sl();
+        st.dupes.push(variant ? { key, of, variant } : { key, of });
+        const order = groups().map(x => x.id);
+        order.splice(order.indexOf(id) + 1, 0, key);
+        st.order = order;
+        copyKeyed(keyOf(active), key, id);
+      });
+      setTimeout(() => goToGroup(key), 0);
+    }
+  }
+  // Duplicates start from the source slide's current edits, not its authored content.
+  function copyKeyed(fromKey, toKey, fromId){
+    ['text', 'img', 'style'].forEach(kind => {
+      Object.keys(state[kind]).forEach(k => { if (k.startsWith(fromKey + '/')) state[kind][toKey + k.slice(fromKey.length)] = clone(state[kind][k]); });
+    });
+    if (state.slides.props && state.slides.props[fromId]) state.slides.props[toKey] = clone(state.slides.props[fromId]);
+  }
+  function dropKeyed(key){
+    ['text', 'img', 'style'].forEach(kind => { Object.keys(state[kind]).forEach(k => { if (k.startsWith(key + '/')) delete state[kind][k]; }); });
+    if (state.slides.props) delete state.slides.props[key];
+  }
+
+  /* ---------------- panel ---------------- */
+  const sw = (act, value, current, label, extraAttr) => '<button type="button" data-act="' + act + '" data-v="' + esc(value) + '" aria-pressed="' + (current === value) + '" title="' + esc(label) + '" style="background:' + esc(resolveColor(value)) + '"' + (extraAttr || '') + '></button>';
+  function swatches(act, current, allowNone){
+    return '<div class="st-swatches">' + (allowNone ? '<button type="button" class="st-none" data-act="' + act + '" data-v="" aria-pressed="' + !current + '" title="' + esc(t('Default')) + '"></button>' : '')
+      + palette.map((p, i) => sw(act, 'palette:' + i, current, t(p.name))).join('')
+      + '<input type="color" data-act="' + act + '-custom" value="' + esc(/^#[0-9a-f]{6}$/i.test(current || '') ? current : '#ffffff') + '" title="' + esc(t('Custom colour')) + '"></div>';
+  }
+  const seg = (act, options, current) => '<div class="st-seg">' + options.map(([v, label]) => '<button type="button" data-act="' + act + '" data-v="' + esc(v) + '" aria-pressed="' + (String(current) === String(v)) + '">' + label + '</button>').join('') + '</div>';
+  const toggle = (act, on, k) => '<button type="button" class="st-toggle" data-act="' + act + '"' + (k ? ' data-k="' + esc(k) + '"' : '') + ' aria-pressed="' + Boolean(on) + '"></button>';
+  function renderPanel(){
+    if (!isOpen) return;
+    const keepScroll = panel.scrollTop;
+    const slide = engine.current();
+    const g = slide && groups().find(x => x.id === slide.dataset.slideId);
+    const props = plain(plain(state.slides.props)[slide && slide.dataset.slideId]);
+    let h = '';
+    // presentation
+    const tr = state.deck.transition || root.dataset.deckTransition || 'slide';
+    h += '<div class="st-sec"><div class="st-sec-h">' + esc(t('Presentation')) + '</div>';
+    if (themes.length){
+      h += '<label class="st-field"><span>' + esc(t('Theme')) + '</span><select data-act="theme">' + themes.map(th => '<option value="' + esc(th.id) + '"' + (th.id === currentTheme() ? ' selected' : '') + '>' + esc(t(th.label || th.id)) + '</option>').join('') + '</select></label>';
+    }
+    h += '<label class="st-field"><span>' + esc(t('Transition')) + '</span><select data-act="transition">' + engine.transitions.map(n => '<option value="' + n + '"' + (n === tr ? ' selected' : '') + '>' + esc(t(TRANSITION_LABELS[n] || n)) + '</option>').join('') + '</select></label>';
+    if (tr === 'wipe' || tr === 'bars' || tr === 'iris') h += '<div class="st-field"><span>' + esc(t('Transition colour')) + '</span>' + swatches('tcolor', state.deck.transitionColor || '', true) + '</div>';
+    h += '</div>';
+    // slide
+    if (slide && g){
+      const n = engine.slides().indexOf(slide) + 1;
+      h += '<div class="st-sec"><div class="st-sec-h">' + esc(t('Slide')) + ' ' + pad(n) + '<small>' + esc(g.id) + '</small></div>';
+      if (g.members.length > 1){
+        h += '<div class="st-field"><span>' + esc(t('Layout')) + '</span><div class="st-variants">' + g.members.map((m, i) => '<button type="button" data-act="variant" data-v="' + esc(m.dataset.variant || '') + '" aria-pressed="' + (m === slide) + '"><div class="st-thumb" data-variant-thumb="' + i + '"></div><span>' + esc(m.dataset.variantLabel ? t(m.dataset.variantLabel) : (t('Layout') + ' ' + (m.dataset.variant || i + 1).toString().toUpperCase())) + '</span></button>').join('') + '</div></div>';
+      }
+      h += '<div class="st-field"><span>' + esc(t('Background')) + '</span>' + swatches('bg', props.bg || '', true) + '</div>';
+      if (config.decor) h += '<div class="st-field st-row"><span>' + esc(t('Decorations')) + '</span>' + toggle('decor', props.decor !== false) + '</div>';
+      for (const def of propDefs(slide)){
+        const cur = def.key in props ? props[def.key] : (def.type === 'toggle' ? slide.classList.contains(def.class) !== Boolean(def.invert) : ((def.options || []).find(o => o.value && slide.classList.contains(o.value)) || { value: '' }).value);
+        if (def.type === 'toggle') h += '<div class="st-field st-row"><span>' + esc(t(def.label || def.key)) + '</span>' + toggle('prop-toggle', cur, def.key) + '</div>';
+        else h += '<div class="st-field"><span>' + esc(t(def.label || def.key)) + '</span><div class="st-seg">' + (def.options || []).map(o => '<button type="button" data-act="prop" data-k="' + esc(def.key) + '" data-v="' + esc(o.value) + '" aria-pressed="' + (cur === o.value) + '">' + esc(t(o.label || o.value)) + '</button>').join('') + '</div></div>';
+      }
+      h += '<div class="st-field st-row"><span>' + esc(t('Skip when presenting')) + '</span>' + toggle('skip', slide.hasAttribute('data-skip')) + '</div>';
+      const note = currentNotes()[g.id.replace(/~\d+$/, '')] || {};
+      h += '<label class="st-field"><span>' + esc(t('Speaker notes')) + '</span><input type="text" data-act="note-title" placeholder="' + esc(t('Title')) + '" value="' + esc(note.title || '') + '"><textarea data-act="note-talk" placeholder="' + esc(t('One talking point per line')) + '">' + esc((note.talk || []).join('\n')) + '</textarea></label>';
+      h += '<div class="st-actions-row"><button type="button" class="st-btn" data-act="dup">' + ICON.copy + esc(t('Duplicate')) + '</button><button type="button" class="st-btn st-danger" data-act="del">' + ICON.trash + esc(t('Delete')) + '</button></div>';
+      h += '</div>';
+    }
+    // selection
+    const z = selectedId && zones.get(selectedId);
+    const zs = z ? plain(state.style[z.id]) : {};
+    h += '<div class="st-sec"><div class="st-sec-h">' + esc(t('Selection')) + (z ? '<small>' + esc(z.kind === 'text' ? t('Text') : t('Picture')) + '</small>' : '') + '</div>';
+    if (!z) h += '<p class="st-hint">' + esc(t('Click text on the slide to type, or click a picture to adjust it. Double-click a picture to replace it.')) + '</p>';
+    else if (z.kind === 'text'){
+      const pct = Math.round((zs.scale || 1) * 100);
+      h += '<div class="st-field"><span>' + esc(t('Size')) + '</span><div class="st-step"><button type="button" data-act="size" data-v="-10">&minus;</button><output>' + pct + '%</output><button type="button" data-act="size" data-v="10">+</button></div><input type="range" min="50" max="200" step="5" value="' + pct + '" data-act="size-range"></div>';
+      h += '<div class="st-field"><span>' + esc(t('Colour')) + '</span>' + swatches('color', zs.color || '', true) + '</div>';
+      const align = zs.align || getComputedStyle(z.el).textAlign.replace('start', 'left').replace('end', 'right');
+      h += '<div class="st-field"><span>' + esc(t('Alignment')) + '</span>' + seg('align', [['left', ICON.left], ['center', ICON.center], ['right', ICON.right]], align) + '</div>';
+      const cs = getComputedStyle(z.el);
+      h += '<div class="st-field"><span>' + esc(t('Style')) + '</span>' + seg('weight', [['bold', '<b>B</b> ' + esc(t('Bold'))], ['regular', esc(t('Regular'))]], zs.bold != null ? (zs.bold ? 'bold' : 'regular') : (parseInt(cs.fontWeight, 10) >= 600 ? 'bold' : 'regular')) + '</div>';
+      h += '<div class="st-field st-row"><span>' + esc(t('Italic')) + '</span>' + toggle('italic', zs.italic != null ? zs.italic : cs.fontStyle === 'italic') + '</div>';
+      h += '<div class="st-actions-row"><button type="button" class="st-btn" data-act="zone-reset">' + esc(t('Reset style')) + '</button></div>';
+    } else {
+      const fit = zs.fit || getComputedStyle(z.el).objectFit || 'cover';
+      const focus = zs.focus || '50% 50%';
+      const zoom = Math.round((zs.zoom || 1) * 100);
+      h += '<div class="st-actions-row"><button type="button" class="st-btn st-primary" data-act="replace">' + esc(t('Replace picture')) + '</button></div>';
+      h += '<div class="st-field"><span>' + esc(t('Fit')) + '</span>' + seg('fit', [['cover', esc(t('Fill'))], ['contain', esc(t('Fit inside'))]], fit === 'contain' ? 'contain' : 'cover') + '</div>';
+      h += '<div class="st-field"><span>' + esc(t('Focus point')) + '</span><div class="st-grid9">' + ['0% 0%', '50% 0%', '100% 0%', '0% 50%', '50% 50%', '100% 50%', '0% 100%', '50% 100%', '100% 100%'].map(p => '<button type="button" data-act="focus" data-v="' + p + '" aria-pressed="' + (p === focus) + '"></button>').join('') + '</div></div>';
+      h += '<div class="st-field"><span>' + esc(t('Zoom')) + ' <output>' + zoom + '%</output></span><input type="range" min="100" max="250" step="5" value="' + zoom + '" data-act="zoom-range"></div>';
+      h += '<div class="st-actions-row"><button type="button" class="st-btn" data-act="zone-reset">' + esc(t('Reset picture')) + '</button></div>';
+    }
+    h += '</div>';
+    panelBody.innerHTML = h;
+    if (g) panelBody.querySelectorAll('[data-variant-thumb]').forEach(box => thumb(box, g.members[Number(box.dataset.variantThumb)]));
+    panel.scrollTop = keepScroll;
+  }
+  const setZoneStyle = (z, patch) => commit(s => { const cur = Object.assign({}, s.style[z.id], patch); Object.keys(cur).forEach(k => { if (cur[k] == null || cur[k] === '') delete cur[k]; }); if (Object.keys(cur).length) s.style[z.id] = cur; else delete s.style[z.id]; });
+  const setSlideProp = (key, value) => { const id = engine.current().dataset.slideId; commit(() => { const p = sl().props; const cur = Object.assign({}, p[id]); if (value === undefined || value === '') delete cur[key]; else cur[key] = value; if (Object.keys(cur).length) p[id] = cur; else delete p[id]; }); };
+  panelBody.addEventListener('click', e => {
+    const el = e.target.closest('[data-act]');
+    if (!el || el.tagName === 'SELECT' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') return;
+    const act = el.dataset.act;
+    const v = el.dataset.v;
+    const z = selectedId && zones.get(selectedId);
+    const slide = engine.current();
+    if (act === 'tcolor') commit(s => { if (v) s.deck.transitionColor = v; else delete s.deck.transitionColor; });
+    else if (act === 'variant') commit(() => { const id = slide.dataset.slideId; if (v) sl().variant[id] = v; else delete sl().variant[id]; });
+    else if (act === 'bg') setSlideProp('bg', v || undefined);
+    else if (act === 'decor') setSlideProp('decor', el.getAttribute('aria-pressed') === 'true' ? false : undefined);
+    else if (act === 'prop') setSlideProp(el.dataset.k, v);
+    else if (act === 'prop-toggle') setSlideProp(el.dataset.k, el.getAttribute('aria-pressed') !== 'true');
+    else if (act === 'skip') slideAction('skip', slide.dataset.slideId);
+    else if (act === 'dup' || act === 'del') slideAction(act, slide.dataset.slideId);
+    else if (!z) return;
+    else if (act === 'size'){ const cur = (plain(state.style[z.id]).scale || 1) + Number(v) / 100; setZoneStyle(z, { scale: Math.max(0.5, Math.min(2, Math.round(cur * 100) / 100)) }); }
+    else if (act === 'color') setZoneStyle(z, { color: v || null });
+    else if (act === 'align') setZoneStyle(z, { align: v });
+    else if (act === 'weight') setZoneStyle(z, { bold: v === 'bold' });
+    else if (act === 'italic') setZoneStyle(z, { italic: el.getAttribute('aria-pressed') !== 'true' });
+    else if (act === 'fit') setZoneStyle(z, { fit: v });
+    else if (act === 'focus') setZoneStyle(z, { focus: v });
+    else if (act === 'replace') pickImage(z);
+    else if (act === 'zone-reset') commit(s => { delete s.style[z.id]; });
+  });
+  panelBody.addEventListener('input', e => {
+    const el = e.target;
+    const z = selectedId && zones.get(selectedId);
+    if (el.dataset.act === 'size-range' && z){
+      el.previousElementSibling.querySelector('output').textContent = el.value + '%';
+      if (!el.dataset.basePx) el.dataset.basePx = String(parseFloat(getComputedStyle(z.el).fontSize) / (plain(state.style[z.id]).scale || 1));
+      z.el.style.fontSize = (Number(el.dataset.basePx) * el.value / 100 / innerWidth * 100).toFixed(3) + 'vw';
+    }
+    if (el.dataset.act === 'zoom-range' && z){ el.previousElementSibling.querySelector('output').textContent = el.value + '%'; z.el.style.transform = 'scale(' + el.value / 100 + ')'; }
+  });
+  panelBody.addEventListener('change', e => {
+    const el = e.target;
+    const act = el.dataset.act;
+    const z = selectedId && zones.get(selectedId);
+    if (act === 'theme') commit(s => { s.deck.theme = el.value; });
+    else if (act === 'transition') commit(s => { s.deck.transition = el.value; });
+    else if (act === 'bg-custom') setSlideProp('bg', el.value);
+    else if (act === 'tcolor-custom') commit(s => { s.deck.transitionColor = el.value; });
+    else if (act === 'color-custom' && z) setZoneStyle(z, { color: el.value });
+    else if (act === 'size-range' && z) setZoneStyle(z, { scale: Number(el.value) / 100 });
+    else if (act === 'zoom-range' && z) setZoneStyle(z, { zoom: Number(el.value) / 100 });
+    else if (act === 'note-title' || act === 'note-talk'){
+      const id = engine.current().dataset.slideId.replace(/~\d+$/, '');
+      const title = panelBody.querySelector('[data-act="note-title"]').value.trim();
+      const talk = panelBody.querySelector('[data-act="note-talk"]').value.split('\n').map(s => s.trim()).filter(Boolean);
+      commit(s => { s.notes[id] = { title, talk }; });
+    }
+  });
+
+  /* ---------------- selection and in-place editing ---------------- */
+  function select(z){
+    if (selectedId === (z && z.id)) return;
+    zones.forEach(x => x.el.removeAttribute('data-st-selected'));
+    selectedId = z ? z.id : null;
+    if (z && isOpen) z.el.setAttribute('data-st-selected', '');
+    renderPanel();
+  }
+  const typing = el => (el && el.closest ? el.closest('[contenteditable="true"]') : null);
+  let textBefore = null;
+  deck.addEventListener('focusin', e => { const z = zoneOf.get(typing(e.target)); if (!z) return; textBefore = JSON.stringify(state); select(z); });
+  deck.addEventListener('input', e => { const z = zoneOf.get(typing(e.target)); if (!z) return; recordText(z); persistSoon(); renderRailSoon(); });
+  deck.addEventListener('focusout', e => {
+    const z = zoneOf.get(typing(e.target));
+    if (!z) return;
+    const clean = sanitize(z.el.innerHTML);
+    if (clean !== z.el.innerHTML) z.el.innerHTML = clean;
+    recordText(z);
+    if (textBefore && textBefore !== JSON.stringify(state)){ history.push(textBefore); future.length = 0; }
+    textBefore = null;
+    persistSoon();
+    renderRailSoon();
+  });
+  deck.addEventListener('keydown', e => {
+    const el = typing(e.target);
+    if (!el) return;
+    e.stopPropagation(); /* paging, notes and overview keys stay with the text */
+    if (e.key === 'Escape'){ e.preventDefault(); el.blur(); }
+    else if (e.key === 'Enter' && !e.isComposing){ e.preventDefault(); document.execCommand('insertLineBreak'); }
+    else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's'){ e.preventDefault(); serverMode ? flush() : saveHtml(); }
+  });
+  deck.addEventListener('paste', e => {
+    if (!typing(e.target)) return;
+    e.preventDefault();
+    const text = (e.clipboardData && e.clipboardData.getData('text/plain')) || '';
+    document.execCommand('insertText', false, text.replace(/\r\n?/g, '\n'));
+  });
+  deck.addEventListener('drop', e => { if (typing(e.target)) e.preventDefault(); });
+  function covers(el){
+    const cs = getComputedStyle(el);
+    const bg = cs.backgroundColor.match(/[\d.]+/g);
+    return (cs.backgroundImage && cs.backgroundImage !== 'none') || (bg && (bg.length < 4 || Number(bg[3]) > 0.3));
+  }
+  function imageAt(x, y){
+    for (const n of document.elementsFromPoint(x, y)){
+      const z = zoneOf.get(n);
+      if (z && z.kind === 'img') return z;
+      if (n === deck || !deck.contains(n)) return null;
+      if (!n.querySelector('img') && covers(n)) return null;
+    }
+    return null;
+  }
+  deck.addEventListener('click', e => {
+    if (!isOpen || typing(e.target)) return;
+    const z = imageAt(e.clientX, e.clientY);
+    if (z){ e.preventDefault(); select(z); }
+    else select(null);
+  });
+  deck.addEventListener('dblclick', e => {
+    if (!isOpen || typing(e.target)) return;
+    const z = imageAt(e.clientX, e.clientY);
+    if (z){ e.preventDefault(); pickImage(z); }
+  });
+  let pendingImage = null;
+  function pickImage(z){ if (!fileInput) return; pendingImage = z; fileInput.value = ''; fileInput.click(); }
+  function readAsDataURL(blob){ return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(blob); }); }
+  async function imageData(file){
+    if (file.type === 'image/svg+xml' || file.type === 'image/gif' || file.size <= 1.5e6) return readAsDataURL(file);
+    const bmp = await createImageBitmap(file);
+    const k = Math.min(1, 2400 / Math.max(bmp.width, bmp.height));
+    const c = document.createElement('canvas');
+    c.width = Math.round(bmp.width * k);
+    c.height = Math.round(bmp.height * k);
+    c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+    const webp = c.toDataURL('image/webp', 0.92);
+    return webp.startsWith('data:image/webp') ? webp : c.toDataURL('image/jpeg', 0.92);
+  }
+  if (fileInput) fileInput.addEventListener('change', async () => {
+    const file = fileInput.files && fileInput.files[0];
+    const z = pendingImage;
+    pendingImage = null;
+    if (!file || !z || !/^image\//.test(file.type)) return;
+    try {
+      const src = await imageData(file);
+      commit(() => recordImage(z, src));
+    } catch (err) { status(t('Could not read that image')); }
+  });
+
+  /* ---------------- console bar, keys, resizing ---------------- */
+  function closeMenus(){ document.querySelectorAll('.st-menu.open').forEach(m => { m.classList.remove('open'); const b = m.querySelector('[aria-expanded]'); if (b) b.setAttribute('aria-expanded', 'false'); }); }
+  const on = (id, fn) => { const el = byId(id); if (el) el.addEventListener('click', fn); };
+  on('edit-btn', () => setStudio(!isOpen));
+  on('st-close', () => setStudio(false));
+  on('st-undo', () => undo());
+  on('st-redo', () => redo());
+  on('st-reset', () => { if (changed() && confirm(t('Discard every change to this deck?'))) commit(s => { Object.assign(s, blank()); }); });
+  on('st-export', e => { e.stopPropagation(); const m = byId('st-export-menu'); const open = !m.classList.contains('open'); closeMenus(); m.classList.toggle('open', open); e.currentTarget.setAttribute('aria-expanded', String(open)); });
+  document.querySelectorAll('[data-st-export]').forEach(b => b.addEventListener('click', () => exportAs(b.dataset.stExport)));
+  document.addEventListener('click', e => { if (!e.target.closest('.st-menu')) closeMenus(); });
+  on('st-ui-theme', () => { prefs.dark = !prefs.dark; savePrefs(); body.classList.toggle('st-dark', isOpen && prefs.dark); });
+  on('st-collapse', () => { prefs.collapsed = !prefs.collapsed; savePrefs(); body.classList.toggle('st-collapsed', isOpen && prefs.collapsed); layoutStage(); });
+  on('st-lang', () => { if (!extra) return; lang = lang === 'en' ? extra.lang : 'en'; prefs.lang = lang; savePrefs(); translateStatic(); renderRail(); renderPanel(); status(); });
+  let replay = false;
+  on('st-play', () => {
+    replay = isOpen;
+    setStudio(false);
+    if (root.requestFullscreen) root.requestFullscreen().catch(() => {});
+  });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && replay){ replay = false; setStudio(true); } });
+  document.addEventListener('deck:change', () => {
+    if (!isOpen) return;
+    const cur = engine.current();
+    railList.querySelectorAll('.st-slide').forEach(item => {
+      const g = groups().find(x => x.id === item.dataset.id);
+      item.classList.toggle('current', Boolean(g) && activeOf(g) === cur);
+    });
+    const z = selectedId && zones.get(selectedId);
+    if (z && z.slide !== cur) select(null); else renderPanel();
+    byId('st-count').textContent = pad(engine.index() + 1) + ' / ' + pad(engine.slides().length);
+  });
+  document.querySelectorAll('[data-st-resize]').forEach(handle => handle.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const which = handle.dataset.stResize;
+    body.classList.add('st-resizing');
+    const move = ev => {
+      const w = which === 'rail' ? ev.clientX : innerWidth - ev.clientX;
+      const clamped = Math.max(which === 'rail' ? 150 : 260, Math.min(which === 'rail' ? 380 : 460, w));
+      root.style.setProperty(which === 'rail' ? '--st-rail-w' : '--st-panel-w', clamped + 'px');
+      prefs[which] = clamped;
+      layoutStage();
+    };
+    const up = () => { body.classList.remove('st-resizing'); removeEventListener('pointermove', move); removeEventListener('pointerup', up); savePrefs(); renderRail(); };
+    addEventListener('pointermove', move);
+    addEventListener('pointerup', up);
+  }));
+  if (prefs.rail) root.style.setProperty('--st-rail-w', prefs.rail + 'px');
+  if (prefs.panel) root.style.setProperty('--st-panel-w', prefs.panel + 'px');
+  window.addEventListener('keydown', e => {
+    if (typing(e.target) || (e.target.closest && e.target.closest('input,textarea,select,dialog'))) return;
+    const k = e.key.toLowerCase();
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && k === 's'){ e.preventDefault(); serverMode ? flush() : saveHtml(); return; }
+    if (mod && k === 'z' && isOpen){ if (e.shiftKey ? redo() : undo()) e.preventDefault(); return; }
+    if (mod || e.altKey) return;
+    if (k === 'e'){ e.preventDefault(); e.stopImmediatePropagation(); setStudio(!isOpen); }
+    else if (k === 'escape' && isOpen && !byId('overview').classList.contains('open')){ e.preventDefault(); e.stopImmediatePropagation(); if (selectedId) select(null); else setStudio(false); }
+  }, true);
+
+  /* ---------------- start ---------------- */
+  translateStatic();
+  if (sandboxed){
+    const list = document.querySelector('#st-export-menu .st-menu-list');
+    if (list){
+      list.parentElement.classList.add('st-off');
+      const note = document.createElement('p');
+      note.className = 'st-menu-note';
+      note.textContent = t('Download the skill to export this deck');
+      list.prepend(note);
+    }
+  }
+  apply();
+  if (/^https?:$/.test(location.protocol) && ['localhost','127.0.0.1'].includes(location.hostname)){
+    fetch('/__deck/ping', { cache: 'no-store' })
+      .then(r => (r.ok ? r.json() : null))
+      .then(info => { serverMode = Boolean(info && info.deck); status(); })
+      .catch(() => {});
+  }
+  if (new URLSearchParams(location.search).has('edit')) setStudio(true);
+
+  /* for agents, the exporter and automated QA — not part of the authoring contract */
+  window.__deckEdit = {
+    setEditing: setStudio,
+    setStudio,
+    isOpen: () => isOpen,
+    zones: () => [...zones.values()].map(z => ({ id: z.id, kind: z.kind })),
+    edits: () => clone(state),
+    bakedHtml,
+    undo,
+    redo,
+  };
+})();
+</script>
+<script id="smart-activity-script">
+(()=>{const sheet=document.querySelector('#deck [data-slide-id="atividade"]');if(!sheet)return;const fields=[...sheet.querySelectorAll('[data-answer]')];const key='smart-classroom-worksheet-v1';let saved={};try{saved=JSON.parse(localStorage.getItem(key)||'{}')}catch(e){}fields.forEach(field=>{field.value=typeof saved[field.dataset.answer]==='string'?saved[field.dataset.answer]:''});const status=sheet.querySelector('.smart-save');function persist(){const data=Object.fromEntries(fields.map(el=>[el.dataset.answer,el.value]));try{localStorage.setItem(key,JSON.stringify(data));status.textContent='Respostas salvas apenas neste navegador.'}catch(e){status.textContent='Salvamento indisponível. Imprima para guardar suas respostas.'}}sheet.addEventListener('input',persist);sheet.addEventListener('wheel',e=>e.stopPropagation(),{passive:true});sheet.addEventListener('touchstart',e=>e.stopPropagation(),{passive:true});sheet.addEventListener('touchend',e=>e.stopPropagation(),{passive:true});
+const questions=[["s", "S", "Específica", "O que você quer alcançar? Em qual situação?"], ["m", "M", "Mensurável", "Como vai medir? Qual é o ponto de partida e o resultado esperado?"], ["a", "A", "Atingível", "Quais recursos, tempo e apoio tornam essa meta possível?"], ["r", "R", "Relevante", "Por que essa meta importa para você ou para o grupo?"], ["t", "T", "Prazo determinado", "Até quando? Em quais datas você vai acompanhar o progresso?"]];function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n}function cleanup(){document.body.classList.remove('smart-printing');document.getElementById('smart-page-size')?.remove()}
+sheet.querySelector('.smart-print').addEventListener('click',()=>{persist();document.getElementById('smart-print-sheet')?.remove();const out=el('article',undefined,'');out.id='smart-print-sheet';out.append(el('h1','Minha meta SMART, na prática'),el('p','Escolha uma meta real e explique o que cada letra representa nela.','print-intro'));const values=Object.fromEntries(fields.map(n=>[n.dataset.answer,n.value]));const identity=el('div',undefined,'print-id');[['Nome / grupo','nome'],['Turma','turma'],['Data','data']].forEach(([label,k])=>identity.append(el('span',label+': '+(values[k]||'__________________'))));out.append(identity);const goal=el('section',undefined,'print-block');goal.append(el('h2','Minha meta'),el('div',values.meta,'print-answer print-goal'));out.append(goal);questions.forEach(([key,letter,title,prompt])=>{const block=el('section',undefined,'print-block');block.append(el('h2',letter+' · '+title),el('p',prompt,'print-question'),el('div',values[key],'print-answer'));out.append(block)});out.append(el('p','Revise: a meta é específica, mensurável, atingível, relevante e tem prazo determinado?','print-foot'));document.body.append(out);const style=el('style');style.id='smart-page-size';style.textContent='@page{size:A4 portrait;margin:12mm}';document.head.append(style);document.body.classList.add('smart-printing');window.print()});window.addEventListener('afterprint',cleanup);
+})();
+</script>
+<script id="smart-quiz-script">
+(()=>{
+const slide=document.querySelector('#deck [data-slide-id="detetive"]');
+const q=s=>slide.querySelector(s);
+const cases=[
+{t:'A equipe quer “melhorar algo no atendimento” até dezembro. Já tem horas e recursos reservados, mas não escolheu qual resultado deseja mudar.',a:'S',why:'Falta especificidade: escolha o resultado e o canal de atendimento. Exemplo: reduzir a espera pela primeira resposta por e-mail.'},
+{t:'Ana lerá mais livros de História até 30 de novembro para apoiar seu trabalho escolar. Tem 30 minutos livres por dia, mas não definiu quantos livros nem como registrar a leitura.',a:'M',why:'Falta uma medida: defina a quantidade de livros e um registro de conclusão. “Mais” não permite verificar se a meta foi alcançada.'},
+{t:'Para revisar a matéria, uma turma pretende produzir 100 resumos em dois dias. O grupo consegue fazer apenas 10 por dia e não terá tempo ou apoio extra.',a:'A',why:'Falta viabilidade: a capacidade é de 20 resumos em dois dias. É preciso reduzir o alvo, ampliar o prazo ou obter recursos.'},
+{t:'A prioridade da biblioteca é ampliar o acesso à leitura. A equipe consegue publicar 20 fotos de cadeiras até sexta, mas não explica como isso contribui para essa prioridade.',a:'R',why:'Falta relevância: conecte o resultado à necessidade real. Por exemplo, divulgar livros disponíveis e orientar novos leitores.'},
+{t:'Para praticar a escrita, Bruno produzirá quatro resenhas de livros, registradas em uma pasta. Tem os livros e duas horas semanais disponíveis, mas não definiu a data de conclusão.',a:'T',why:'Falta prazo: estabeleça uma data final e momentos de revisão. Exemplo: concluir as quatro resenhas até 30 de novembro.'}
+];
+const labels={S:'S · Específica',M:'M · Mensurável',A:'A · Atingível',R:'R · Relevante',T:'T · Prazo'};
+let index=0,score=0,answered=false;
+function render(){answered=false;q('#quiz-progress').textContent=`Caso ${index+1} de ${cases.length} · Acertos: ${score}`;q('#quiz-case').textContent=cases[index].t;q('#quiz-feedback').textContent='';q('#quiz-next').hidden=true;q('#quiz-options').replaceChildren();Object.entries(labels).forEach(([letter,label])=>{const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.letter=letter;b.addEventListener('click',()=>answer(letter));q('#quiz-options').append(b)});}
+function answer(letter){if(answered)return;answered=true;const correct=letter===cases[index].a;if(correct)score++;q('#quiz-options').querySelectorAll('button').forEach(b=>{b.disabled=true;if(b.dataset.letter===cases[index].a)b.dataset.right='';else if(b.dataset.letter===letter)b.dataset.wrong=''});q('#quiz-feedback').textContent=(correct?'Correto! ':'Resposta: '+labels[cases[index].a]+'. ')+cases[index].why;q('#quiz-progress').textContent=`Caso ${index+1} de ${cases.length} · Acertos: ${score}`;q('#quiz-next').textContent=index===cases.length-1?'Ver resultado →':'Próximo caso →';q('#quiz-next').hidden=false;q('#quiz-next').focus();}
+q('#quiz-next').addEventListener('click',()=>{if(index<cases.length-1){index++;render();q('#quiz-options button').focus()}else{q('#quiz-progress').textContent='Desafio concluído';q('#quiz-case').textContent=`Você acertou ${score} de ${cases.length} casos.`;q('#quiz-options').replaceChildren();q('#quiz-feedback').textContent=score===5?'Você identificou os cinco critérios. Agora revise a meta que escreveu na ficha.':'Releia os critérios e tente novamente. Uma meta precisa combinar os cinco pontos.';q('#quiz-next').hidden=true;q('#quiz-reset').focus()}});
+q('#quiz-reset').addEventListener('click',()=>{index=0;score=0;render();q('#quiz-options button').focus()});
+['wheel','touchstart','touchend'].forEach(type=>slide.addEventListener(type,e=>e.stopPropagation(),{passive:true}));
+window.__SLIDE_NOTES__.detetive={title:'Detetive SMART',talk:['Reserve cinco minutos para os cinco casos.','Após cada resposta, discuta por que o critério indicado faz falta.','A pontuação considera apenas a primeira resposta; Recomeçar inicia uma nova tentativa.']};
+function sync(){const current=window.__deck.current();document.querySelectorAll('#deck > .slide').forEach(s=>{s.inert=!document.body.classList.contains('studio')&&s!==current});}
+document.addEventListener('deck:change',sync);new MutationObserver(sync).observe(document.body,{attributes:true,attributeFilter:['class']});render();sync();
+})();
+</script></body>
+</html>
